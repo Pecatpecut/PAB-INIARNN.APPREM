@@ -3,7 +3,6 @@ import '../../core/constants.dart';
 
 // widgets
 import '../../widgets/navbar/bottom_navbar.dart';
-import '../../widgets/cards/product_card.dart';
 import '../../widgets/cards/premium_product_tile.dart';
 
 // service
@@ -32,8 +31,9 @@ class _ProductPageState extends State<ProductPage> {
 
   Future fetchProducts() async {
     try {
-      final data = await productService.getProducts();
-
+      final data = await productService.getProducts(
+        category: selectedCategory == "All" ? null : selectedCategory,
+      );
       setState(() {
         products = data;
         isLoading = false;
@@ -45,6 +45,14 @@ class _ProductPageState extends State<ProductPage> {
       });
     }
   }
+
+    void onCategoryChanged(String category) {
+      setState(() {
+        selectedCategory = category;
+        isLoading = true;
+      });
+      fetchProducts();
+    }
 
   String _getPrice(Map product) {
     final variants = product['product_variants'] ?? [];
@@ -173,11 +181,7 @@ class _ProductPageState extends State<ProductPage> {
     final theme = Theme.of(context);
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedCategory = title;
-        });
-      },
+      onTap: () => onCategoryChanged(title),
       child: Container(
         margin: const EdgeInsets.only(right: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

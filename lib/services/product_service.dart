@@ -3,14 +3,14 @@ import 'supabase_service.dart';
 class ProductService {
   final supabase = SupabaseService.client;
 
-  /// 🔥 GET PRODUCTS + VARIANTS
-  Future<List<Map<String, dynamic>>> getProducts() async {
-    final data = await supabase.from('products').select('''
+  Future<List<Map<String, dynamic>>> getProducts({String? category}) async {
+    var query = supabase.from('products').select('''
       id,
       name,
       description,
       image,
       is_active,
+      category,
       product_variants (
         id,
         type,
@@ -19,6 +19,10 @@ class ProductService {
       )
     ''').eq('is_active', true);
 
-    return List<Map<String, dynamic>>.from(data);
+    if (category != null && category != 'All') {
+    query = query.eq('category', category);
+  }
+
+    return List<Map<String, dynamic>>.from(await query);
   }
 }

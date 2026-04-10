@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants.dart';
 import '../../widgets/cards/product_card.dart';
 import '../../widgets/shared/spacing.dart';
+import '../../services/product_service.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -11,36 +12,41 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  String query = "";
+  final productService = ProductService();
 
-  final List<Map<String, String>> products = [
-    {
-      "title": "Netflix Premium",
-      "price": "Rp 30.000",
-      "image": "assets/images/profile.png",
-    },
-    {
-      "title": "Spotify Premium",
-      "price": "Rp 20.000",
-      "image": "assets/images/profile.png",
-    },
-    {
-      "title": "Canva Pro",
-      "price": "Rp 15.000",
-      "image": "assets/images/profile.png",
-    },
-    {
-      "title": "Adobe Creative Cloud",
-      "price": "Rp 50.000",
-      "image": "assets/images/profile.png",
-    },
-  ];
+  String query = "";
+  List<Map<String, dynamic>> products = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchProducts();
+  }
+
+  Future fetchProducts() async {
+    try {
+      final data = await productService.getProducts();
+      setState(() {
+        products = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  String _getPrice(Map product) {
+    final variants = product['product_variants'] ?? [];
+    if (variants.isEmpty) return "N/A";
+    return "Rp ${variants[0]['price']}";
+  }
 
   @override
   Widget build(BuildContext context) {
     final filtered = products
         .where((p) =>
-            p["title"]!.toLowerCase().contains(query.toLowerCase()))
+            p["name"]!.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
     return Scaffold(
@@ -73,30 +79,32 @@ class _SearchPageState extends State<SearchPage> {
 
             /// 🔥 RESULT
             Expanded(
-              child: filtered.isEmpty
-                  ? const Center(child: Text("Tidak ditemukan"))
-                  : ListView(
-                      children: filtered.map((p) {
-                        return Column(
-                          children: [
-                            ProductCard(
-                              image: p["image"]!,
-                              title: p["title"]!,
-                              price: p["price"]!,
-                              onTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/detail',
-                                  arguments: p,
-                                );
-                              },
-                            ),
-                            Space.h15,
-                          ],
-                        );
-                      }).toList(),
-                    ),
-            )
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered.isEmpty
+                      ? const Center(child: Text("Tidak ditemukan"))
+                      : ListView(
+                          children: filtered.map((p) {
+                            return Column(
+                              children: [
+                                ProductCard(
+                                  image: "assets/images/profile.png", // tetap pakai profile
+                                  title: p["name"] ?? "-",
+                                  price: _getPrice(p),
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      '/detail',
+                                      arguments: p,
+                                    );
+                                  },
+                                ),
+                                Space.h15,
+                              ],
+                            );
+                          }).toList(),
+                        ),
+            ),
           ],
         ),
       ),

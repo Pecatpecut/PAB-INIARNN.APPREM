@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^6.0.0
+  image_picker: ^1.2.1
   provider: ^6.0.5
   supabase_flutter: ^2.12.2
   url_launcher: ^6.2.5
