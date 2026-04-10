@@ -13,50 +13,72 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   final _authService = AuthService();
 
-  Future<void> _login() async {
-    setState(() => _isLoading = true);
+    Future<void> _login() async {
+      /// 🔥 VALIDASI DULU (WAJIB)
+      if (_emailController.text.trim().isEmpty ||
+          _passwordController.text.trim().isEmpty) {
 
-    try {
-      final role = await _authService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      if (!mounted) return;
-
-      // Redirect sesuai role
-      if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/admin');
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Email & password wajib diisi")),
+        );
+        return;
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login gagal: ${e.toString()}')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
+
+      setState(() => _isLoading = true);
+
+      try {
+        final role = await _authService.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+
+        if (!mounted) return;
+
+        if (role == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+
+      } catch (e) {
+        /// 🔥 ERROR HANDLE YANG LEBIH RAPI
+        String message = "Terjadi kesalahan";
+
+        if (e.toString().contains("Invalid login credentials")) {
+          message = "Email atau password salah";
+        } else if (e.toString().contains("missing email")) {
+          message = "Email wajib diisi";
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+
+      } finally {
+        setState(() => _isLoading = false);
+      }
     }
-  }
 
   @override
   Widget build(BuildContext context) {
+            final theme = Theme.of(context);
     return Scaffold(
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF0D0D18),
-              Color(0xFF1A1A2E),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.surface,
+            theme.colorScheme.primary.withValues(alpha:0.2),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
+      ),
 
         child: SafeArea(
           child: Padding(
@@ -75,7 +97,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha:0.05),
                       ),
                       child: Image.asset(
                         'assets/images/profile.png',
@@ -96,9 +118,10 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 5),
 
-                    const Text(
+                    Text(
                       "˗ˏˋ apps premium by arnn 🐰 ࿐ྂ",
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle (color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -107,10 +130,10 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 40),
 
                 /// 🔥 TITLE
-                const Text(
+                Text(
                   "Welcome Back",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 30,
                     fontWeight: FontWeight.bold,
                   ),
@@ -122,11 +145,11 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withValues(alpha:0.05),
                     borderRadius:
                         BorderRadius.circular(AppConstants.radius),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                     ),
                   ),
                   child: Column(
@@ -151,8 +174,8 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account?",
-                        style: TextStyle(color: Colors.white70)),
+                    Text("Don't have an account?",
+                        style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
                     TextButton(
                       onPressed: () {
                         Navigator.pushNamed(context, '/register');
@@ -172,40 +195,69 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _input(String hint, {bool isPassword = false, required TextEditingController controller}) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
-        filled: true,
-        fillColor: Colors.black.withOpacity(0.4),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppConstants.radius),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
+Widget _input(
+  String hint, {
+    
+  bool isPassword = false,
+  required TextEditingController controller,
+}) {
+  final theme = Theme.of(context);
 
+  return TextField(
+    controller: controller,
+    obscureText: isPassword ? !_isPasswordVisible : false,
+    style: TextStyle(color: theme.colorScheme.onSurface),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+      ),
+      filled: true,
+      fillColor: theme.colorScheme.surface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radius),
+        borderSide: BorderSide.none,
+      ),
+
+      suffixIcon: isPassword
+          ? GestureDetector(
+              onTapDown: (_) {
+                setState(() => _isPasswordVisible = true);
+              },
+              onTapUp: (_) {
+                setState(() => _isPasswordVisible = false);
+              },
+              onTapCancel: () {
+                setState(() => _isPasswordVisible = false);
+              },
+              child: Icon(
+                _isPasswordVisible
+                    ? Icons.visibility
+                    : Icons.visibility_off,
+                color: theme.colorScheme.onSurface,
+              ),
+            )
+          : null,
+    ),
+  );
+}
   Widget _button() {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: _login,
       child: Container(
         height: 55,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppConstants.radius),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             colors: [
-              Color(0xFFACA3FF),
-              Color(0xFF6F5FEA),
-            ],
+              theme.colorScheme.primary,
+              theme.colorScheme.secondary,
+            ]
           ),
           boxShadow: [
             BoxShadow(
-              color: Color(0xFF6F5FEA).withOpacity(0.6),
+              color: Color(0xFF6F5FEA).withValues(alpha:0.6),
               blurRadius: 20,
             )
           ],

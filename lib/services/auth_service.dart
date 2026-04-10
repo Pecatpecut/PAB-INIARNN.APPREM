@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService {
   final supabase = Supabase.instance.client;
 
+  /// REGISTER
   Future<void> register({
     required String name,
     required String email,
@@ -14,8 +15,15 @@ class AuthService {
       password: password,
     );
 
+    final user = response.user;
+
+    if (user == null) {
+      throw Exception("Gagal membuat akun");
+    }
+
+    /// insert ke table users
     await supabase.from('users').insert({
-      'id': response.user!.id,
+      'id': user.id,
       'name': name,
       'email': email,
       'phone': phone,
@@ -23,6 +31,7 @@ class AuthService {
     });
   }
 
+  /// LOGIN
   Future<String> login({
     required String email,
     required String password,
@@ -32,15 +41,22 @@ class AuthService {
       password: password,
     );
 
+    final user = authRes.user;
+
+    if (user == null) {
+      throw Exception("Login gagal");
+    }
+
     final data = await supabase
         .from('users')
         .select('role')
-        .eq('id', authRes.user!.id)
+        .eq('id', user.id)
         .single();
 
-    return data['role']; 
+    return data['role'];
   }
 
+  /// LOGOUT
   Future<void> logout() async {
     await supabase.auth.signOut();
   }

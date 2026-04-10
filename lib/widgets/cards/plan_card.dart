@@ -20,37 +20,74 @@ class PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 15),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: isSelected
-              ? theme.colorScheme.primary.withOpacity(0.2)
-              : theme.colorScheme.surface,
-          border: isSelected
-              ? Border.all(color: theme.colorScheme.primary)
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: isSelected
+                ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                : theme.colorScheme.surface.withValues(alpha: 0.6),
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
 
-            Text(title,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+              /// 🔥 TITLE + CHECK
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
 
-            const SizedBox(height: 10),
+                  if (isSelected)
+                    Icon(Icons.check_circle,
+                        color: theme.colorScheme.primary),
+                ],
+              ),
 
-            ...features.map((f) => Text("• $f")),
+              const SizedBox(height: 10),
 
-            const SizedBox(height: 10),
+              /// 🔥 FEATURES
+              ...features.map((f) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      "• $f",
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7),
+                      ),
+                    ),
+                  )),
 
-            Text(price,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16)),
-          ],
+              const SizedBox(height: 10),
+
+              /// 🔥 PRICE
+              Text(
+                price,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

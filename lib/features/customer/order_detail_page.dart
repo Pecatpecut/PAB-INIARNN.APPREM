@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 
 // widgets
@@ -13,40 +14,87 @@ class OrderDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final args =
+    final data =
         ModalRoute.of(context)?.settings.arguments as Map?;
 
-    if (args == null) {
+    if (data == null) {
       return const Scaffold(
         body: Center(child: Text("No Data")),
       );
     }
 
-    final title = args["title"] ?? "Product";
-    final price = args["price"] ?? "Rp 0";
-    final date = args["date"] ?? "-";
-    final status = args["status"] ?? "pending";
+    final productName = data["product_name"] ?? "-";
+    final variant = data["variant_type"] ?? "-";
+    final duration = data["duration_days"] ?? 0;
+    final price = data["price"] ?? 0;
+    final status = data["status"] ?? "pending";
+    final date = data["created_at"] ?? "-";
+
+    final email = data["account_email"] ?? "-";
+    final password = data["account_password"] ?? "-";
+
+    final imageUrl =
+        data['products'] != null ? data['products']['image'] : null;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
 
       appBar: AppBar(
         title: const Text("Order Detail"),
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(AppConstants.padding),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.surface,
+              theme.colorScheme.primary.withValues(alpha: 0.1),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+
         child: ListView(
+          padding: const EdgeInsets.all(AppConstants.padding),
           children: [
 
-            /// 🔥 PRODUCT INFO
+            /// 🔥 IMAGE
             Container(
-              padding: const EdgeInsets.all(16),
+              width: 70,
+              height: 70,
+              margin: const EdgeInsets.only(bottom: 15),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radius),
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.black,
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? Image.network(imageUrl, fit: BoxFit.cover)
+                  : Center(
+                      child: Text(
+                        productName[0],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                        ),
+                      ),
+                    ),
+            ),
+
+            /// 🔥 PRODUCT CARD
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF1B1B2F),
+                    Color(0xFF1F1F3A),
+                  ],
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,15 +104,45 @@ class OrderDetailPage extends StatelessWidget {
                     mainAxisAlignment:
                         MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                      Expanded(
+                        child: Text(
+                          productName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-
                       StatusBadge(status: status),
+                    ],
+                  ),
+
+                  Space.h10,
+
+                  const Text(
+                    "Premium Subscription",
+                    style: TextStyle(color: Colors.white54),
+                  ),
+
+                  Space.h15,
+
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "$variant ($duration Days)",
+                        style:
+                            const TextStyle(color: Colors.white),
+                      ),
+                      Text(
+                        "Rp $price",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
 
@@ -72,17 +150,8 @@ class OrderDetailPage extends StatelessWidget {
 
                   Text(
                     "Order Date: $date",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-
-                  Space.h10,
-
-                  Text(
-                    price,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                    style:
+                        const TextStyle(color: Colors.white54),
                   ),
                 ],
               ),
@@ -94,49 +163,63 @@ class OrderDetailPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
+                color: theme.colorScheme.surface
+                    .withValues(alpha: 0.7),
                 borderRadius:
                     BorderRadius.circular(AppConstants.radius),
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
-                  Text("Account Information",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Account Information",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold),
+                  ),
 
-                  SizedBox(height: 10),
+                  Space.h10,
 
-                  Text("Email: user@email.com"),
-                  Text("Password: ********"),
-                  Text("Status: Active"),
+                  Text("Email: $email"),
+                  Text("Password: $password"),
+                  Text(
+                    "Status: ${status == "success" ? "Active" : "Pending"}",
+                  ),
                 ],
               ),
             ),
 
             Space.h20,
 
-            /// 🔥 ACTION BUTTONS
+            /// 🔥 CLAIM
             PrimaryButton(
               text: "Claim Warranty",
               onTap: () {
                 Navigator.pushNamed(
                   context,
                   '/garansi',
-                  arguments: args,
+                  arguments: data,
                 );
               },
             ),
 
             Space.h10,
 
+            /// 🔥 WHATSAPP BUTTON
             PrimaryButton(
               text: "Contact Support",
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Contact admin via WhatsApp"),
-                  ),
-                );
+              onTap: () async {
+                final phone = "6285349661585";
+                final message =
+                    "Halo admin, saya butuh bantuan untuk order $productName";
+
+                final url = Uri.parse(
+                    "https://wa.me/$phone?text=${Uri.encodeComponent(message)}");
+
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url,
+                      mode: LaunchMode.externalApplication);
+                }
               },
             ),
 

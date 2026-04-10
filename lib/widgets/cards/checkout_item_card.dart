@@ -21,7 +21,7 @@ class CheckoutItemCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.surface.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -30,11 +30,23 @@ class CheckoutItemCard extends StatelessWidget {
           /// 🔥 IMAGE
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
+            child: Image.network(
               image,
               width: 50,
               height: 50,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              },
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.image_not_supported),
             ),
           ),
 
@@ -45,10 +57,20 @@ class CheckoutItemCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(subtitle,
-                    style: const TextStyle(color: Colors.grey)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color:
+                        theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
               ],
             ),
           ),
@@ -56,8 +78,9 @@ class CheckoutItemCard extends StatelessWidget {
           /// 🔥 PRICE
           Text(
             price,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
             ),
           ),
         ],

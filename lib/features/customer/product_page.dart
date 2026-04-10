@@ -4,6 +4,10 @@ import '../../core/constants.dart';
 // widgets
 import '../../widgets/navbar/bottom_navbar.dart';
 import '../../widgets/cards/product_card.dart';
+import '../../widgets/cards/premium_product_tile.dart';
+
+// service
+import '../../services/product_service.dart';
 
 class ProductPage extends StatefulWidget {
   const ProductPage({super.key});
@@ -15,54 +19,67 @@ class ProductPage extends StatefulWidget {
 class _ProductPageState extends State<ProductPage> {
   String selectedCategory = "All";
 
-  final List<Map<String, dynamic>> products = [
-    {
-      "title": "Netflix Premium",
-      "price": "\$4.99",
-      "category": "Streaming",
-    },
-    {
-      "title": "Spotify Premium",
-      "price": "\$1.99",
-      "category": "Music",
-    },
-    {
-      "title": "YouTube Premium",
-      "price": "\$2.99",
-      "category": "Streaming",
-    },
-    {
-      "title": "Canva Pro",
-      "price": "\$3.99",
-      "category": "Editing",
-    },
-    {
-      "title": "Adobe CC",
-      "price": "\$12.99",
-      "category": "Editing",
-    },
-    {
-      "title": "Coursera Plus",
-      "price": "\$5.99",
-      "category": "Study",
-    },
-  ];
+  final productService = ProductService();
+
+  List<Map<String, dynamic>> products = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchProducts();
+  }
+
+  Future fetchProducts() async {
+    try {
+      final data = await productService.getProducts();
+
+      setState(() {
+        products = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("ERROR FETCH PRODUCT: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  String _getPrice(Map product) {
+    final variants = product['product_variants'] ?? [];
+
+    if (variants.isEmpty) return "N/A";
+
+    final price = variants[0]['price'];
+    return "Rp $price";
+  }
+
+  
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final filteredProducts = selectedCategory == "All"
-        ? products
-        : products
-            .where((p) => p["category"] == selectedCategory)
-            .toList();
+    final filteredProducts = products; // sementara tanpa category
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.background,
-      bottomNavigationBar: const CustomBottomNavbar(currentIndex: 1),
+  return Scaffold(
+    backgroundColor: theme.colorScheme.surface,
+    bottomNavigationBar: const CustomBottomNavbar(currentIndex: 1),
 
-      body: SafeArea(
+    body: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.surface,
+            theme.colorScheme.primary.withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+
+    child: SafeArea( // 👉 PAKAI child, BUKAN body lagi
         child: Padding(
           padding: const EdgeInsets.all(AppConstants.padding),
           child: Column(
@@ -70,30 +87,32 @@ class _ProductPageState extends State<ProductPage> {
             children: [
 
               /// 🔹 TITLE
-              const Text(
+              Text(
                 "Premium Modules",
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
 
               const SizedBox(height: 5),
 
-              const Text(
-                "Choose your premium apps",
-                style: TextStyle(color: Colors.grey),
+              Text(
+              "Choose your premium apps",
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
+            ),
 
               const SizedBox(height: 20),
 
-              /// 🔥 CATEGORY CHIPS
+              /// 🔥 CATEGORY (sementara UI saja)
               SizedBox(
                 height: 40,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-
                     _chip("All"),
                     _chip("Streaming"),
                     _chip("Music"),
@@ -105,41 +124,53 @@ class _ProductPageState extends State<ProductPage> {
 
               const SizedBox(height: 20),
 
-              /// 🔥 LIST PRODUCT
+              /// 🔥 CONTENT
               Expanded(
-                child: ListView.builder(
-                  itemCount: filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = filteredProducts[index];
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : filteredProducts.isEmpty
+                        ? const Center(child: Text("Tidak ada produk"))
+                        : ListView.builder(
+                            itemCount: filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = filteredProducts[index];
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 15),
-                      child: ProductCard(
-                        image: "assets/images/profile.png",
-                        title: product["title"],
-                        price: product["price"],
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/detail',
-                            arguments: product,
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                              return PremiumProductTile(
+                                title: product['name'] ?? "-",
+                                subtitle: _getSubtitle(product),
+                                imageUrl: product['image'], // 🔥 dari database
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/detail',
+                                    arguments: product,
+                                  );
+                                },
+                              );
+                            },
+                          ),
               ),
-            ],
+                          ],
           ),
         ),
       ),
+    )
     );
   }
 
+    String _getSubtitle(Map product) {
+      final variants = product['product_variants'] ?? [];
+
+      if (variants.isEmpty) return "No package";
+
+      final v = variants[0];
+
+      return "${v['duration_days']} Days • ${v['type']}";
+    }
   /// 🔥 CATEGORY CHIP
   Widget _chip(String title) {
     final isActive = selectedCategory == title;
+    final theme = Theme.of(context);
 
     return GestureDetector(
       onTap: () {
@@ -153,8 +184,8 @@ class _ProductPageState extends State<ProductPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: isActive
-              ? const Color(0xFF6F5FEA)
-              : Colors.grey.withOpacity(0.2),
+                ? theme.colorScheme.primary
+                : theme.colorScheme.surface.withValues(alpha: 0.3),
         ),
         child: Text(
           title,

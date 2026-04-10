@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants.dart';
 
 // widgets
 import '../../widgets/shared/spacing.dart';
 import '../../widgets/buttons/primary_button.dart';
 import '../../widgets/shared/status_badge.dart';
+
+// service
+import '../../services/claims_service.dart';
 
 class GaransiPage extends StatefulWidget {
   const GaransiPage({super.key});
@@ -14,6 +18,12 @@ class GaransiPage extends StatefulWidget {
 }
 
 class _GaransiPageState extends State<GaransiPage> {
+  final supabase = Supabase.instance.client;
+  final claimsService = ClaimsService();
+
+  final TextEditingController descriptionController =
+      TextEditingController();
+
   String selectedReason = "Cannot login";
   bool uploaded = false;
 
@@ -28,39 +38,61 @@ class _GaransiPageState extends State<GaransiPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final args =
+    final data =
         ModalRoute.of(context)?.settings.arguments as Map?;
 
-    if (args == null) {
+    if (data == null) {
       return const Scaffold(
         body: Center(child: Text("No Data")),
       );
     }
 
-    final title = args["title"] ?? "Product";
-    final status = args["status"] ?? "pending";
-    final date = args["date"] ?? "-";
+    final productName = data["product_name"] ?? "-";
+    final status = data["status"] ?? "pending";
+    final date = data["created_at"] ?? "-";
+    final price = data["price"] ?? 0;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
 
       appBar: AppBar(
         title: const Text("Claim Warranty"),
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(AppConstants.padding),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.surface,
+              theme.colorScheme.primary.withValues(alpha: 0.1),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+
         child: ListView(
+          padding: const EdgeInsets.all(AppConstants.padding),
           children: [
 
-            /// 🔥 ORDER INFO
+            /// 🔥 HEADER CARD
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius:
-                    BorderRadius.circular(AppConstants.radius),
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  colors: theme.brightness == Brightness.dark
+                      ? [
+                          const Color(0xFF1B1B2F),
+                          const Color(0xFF1F1F3A),
+                        ]
+                      : [
+                          theme.colorScheme.primary.withValues(alpha: 0.1),
+                          theme.colorScheme.surface,
+                        ],
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,10 +102,14 @@ class _GaransiPageState extends State<GaransiPage> {
                     mainAxisAlignment:
                         MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          productName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       StatusBadge(status: status),
@@ -83,8 +119,20 @@ class _GaransiPageState extends State<GaransiPage> {
                   Space.h10,
 
                   Text(
-                    "Order Date: $date",
-                    style: const TextStyle(color: Colors.grey),
+                    "Order • $date",
+                    style:
+                        const TextStyle(color: Colors.white54),
+                  ),
+
+                  Space.h10,
+
+                  Text(
+                    "Rp $price",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -93,36 +141,62 @@ class _GaransiPageState extends State<GaransiPage> {
             Space.h20,
 
             /// 🔥 REASON
-            const Text("Select Problem"),
+            Text(
+              "Select Problem",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
 
             Space.h10,
 
-            ...reasons.map((r) {
-              return RadioListTile(
-                value: r,
-                groupValue: selectedReason,
-                onChanged: (value) {
-                  setState(() {
-                    selectedReason = value.toString();
-                  });
-                },
-                title: Text(r),
-              );
-            }).toList(),
+            RadioGroup<String>(
+              groupValue: selectedReason,
+              onChanged: (value) {
+                setState(() {
+                  selectedReason = value!;
+                });
+              },
+              child: Column(
+                children: reasons.map((r) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: theme.colorScheme.surface
+                          .withValues(alpha: 0.7),
+                    ),
+                    child: RadioListTile<String>(
+                      value: r,
+                      title: Text(r),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
 
             Space.h20,
 
             /// 🔥 DESCRIPTION
-            const Text("Description"),
+            Text(
+              "Description",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
 
             Space.h10,
 
             TextField(
+              controller: descriptionController,
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: "Explain your problem...",
                 filled: true,
-                fillColor: theme.colorScheme.surface,
+                fillColor:
+                    theme.colorScheme.surface.withValues(alpha: 0.7),
                 border: OutlineInputBorder(
                   borderRadius:
                       BorderRadius.circular(AppConstants.radius),
@@ -133,7 +207,7 @@ class _GaransiPageState extends State<GaransiPage> {
 
             Space.h20,
 
-            /// 🔥 UPLOAD PROOF
+            /// 🔥 UPLOAD (sementara dummy)
             GestureDetector(
               onTap: () {
                 setState(() {
@@ -145,13 +219,20 @@ class _GaransiPageState extends State<GaransiPage> {
                 decoration: BoxDecoration(
                   borderRadius:
                       BorderRadius.circular(AppConstants.radius),
-                  border: Border.all(color: Colors.grey),
+                  border: Border.all(
+                    color: theme.colorScheme.primary
+                        .withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Center(
                   child: Text(
                     uploaded
-                        ? "✔ Proof Uploaded"
+                        ? "✔ Screenshot Uploaded"
                         : "Upload Screenshot",
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.6),
+                    ),
                   ),
                 ),
               ),
@@ -162,24 +243,45 @@ class _GaransiPageState extends State<GaransiPage> {
             /// 🔥 SUBMIT
             PrimaryButton(
               text: "Submit Claim",
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text("Success"),
-                    content: const Text(
-                        "Your warranty claim has been sent"),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pop(context);
-                        },
-                        child: const Text("OK"),
-                      )
-                    ],
-                  ),
-                );
+              onTap: () async {
+                final user = supabase.auth.currentUser;
+
+                if (user == null) return;
+
+                try {
+                  await claimsService.createClaim(
+                    orderId: data['id'],
+                    userId: user.id,
+                    description:
+                        "$selectedReason - ${descriptionController.text}",
+                  );
+
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text("Success"),
+                      content: const Text(
+                          "Your warranty claim has been sent"),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pop(context);
+                          },
+                          child: const Text("OK"),
+                        )
+                      ],
+                    ),
+                  );
+                } catch (e) {
+                  print("ERROR CLAIM: $e");
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to submit claim"),
+                    ),
+                  );
+                }
               },
             ),
 

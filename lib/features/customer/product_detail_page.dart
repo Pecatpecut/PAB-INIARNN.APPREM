@@ -15,135 +15,193 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
 
-  int selectedIndex = 1;
+  late List<Map<String, dynamic>> variants;
+  int selectedIndex = 0;
 
-  final plans = [
-    {
-      "title": "3 Days",
-      "price": "\$0.99",
-      "features": ["Shared Account", "1080p"],
-    },
-    {
-      "title": "1 Month (Best Value)",
-      "price": "\$8.50",
-      "features": ["Private Account", "Ultra HD", "4 Screens"],
-    },
-    {
-      "title": "7 Days",
-      "price": "\$2.75",
-      "features": ["Private Profile", "HD Quality"],
-    },
-  ];
+  late Map product;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    product = ModalRoute.of(context)?.settings.arguments as Map;
+
+    variants = List<Map<String, dynamic>>.from(
+      product['product_variants'] ?? [],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map?;
-
-    final title = args?["title"] ?? "Netflix Premium";
+    final title = product['name'] ?? "-";
+    final image = product['image'];
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
 
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: theme.colorScheme.surface,
-      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.surface,
+              theme.colorScheme.primary.withValues(alpha: 0.1),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(AppConstants.padding),
-        child: Column(
-          children: [
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.padding),
+            child: Column(
+              children: [
 
-            Expanded(
-              child: ListView(
-                children: [
-
-                  /// 🔥 TITLE
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                /// 🔙 BACK
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back,
+                          color: theme.colorScheme.onSurface),
                     ),
-                  ),
+                  ],
+                ),
 
-                  Space.h10,
+                Expanded(
+                  child: ListView(
+                    children: [
 
-                  const Text(
-                    "Experience premium features with high quality access.",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                      /// 🔥 LOGO
+                      Column(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: theme.colorScheme.surface,
+                            ),
+                            clipBehavior: Clip.hardEdge,
+                            child: image != null
+                                ? Image.network(image, fit: BoxFit.cover)
+                                : const Icon(Icons.image, size: 40),
+                          ),
 
-                  Space.h20,
+                          Space.h15,
 
-                  /// 🔥 TAGS
-                  Wrap(
-                    spacing: 10,
-                    children: const [
-                      Chip(label: Text("Ultra HD 4K")),
-                      Chip(label: Text("Spatial Audio")),
-                      Chip(label: Text("Ad-Free")),
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+
+                          Space.h10,
+
+                          Text(
+                            product['description'] ?? "-",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Space.h20,
+
+                      /// 🔥 TAG
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          _tag(context, "Premium"),
+                          _tag(context, "Fast Delivery"),
+                          _tag(context, "Warranty"),
+                        ],
+                      ),
+
+                      Space.h20,
+
+                      /// 🔥 PLAN
+                      Text(
+                        "Choose Plan",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+
+                      Space.h10,
+
+                      /// 🔥 VARIANTS
+                      ...List.generate(variants.length, (index) {
+                        final v = variants[index];
+
+                        return PlanCard(
+                          title: "${v['duration_days']} Days",
+                          price: "Rp ${v['price']}",
+                          features: [
+                            v['type'] ?? '-',
+                            "Active Plan",
+                          ],
+                          isSelected: selectedIndex == index,
+                          onTap: () {
+                            setState(() {
+                              selectedIndex = index;
+                            });
+                          },
+                        );
+                      }),
                     ],
                   ),
+                ),
 
-                  Space.h20,
+                /// 🔥 BUTTON
+                PrimaryButton(
+                  text: "Order Now",
+                  onTap: () {
+                    final selectedVariant = variants[selectedIndex];
 
-                  /// 🔥 FEATURES
-                  const Text("Features",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-
-                  Space.h10,
-
-                  const Text("• Instant Delivery"),
-                  const Text("• Full Warranty"),
-                  const Text("• 24/7 Support"),
-                  const Text("• Multi-platform"),
-
-                  Space.h20,
-
-                  /// 🔥 PLAN LIST
-                  const Text("Select Plan",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-
-                  Space.h10,
-
-                  ...List.generate(plans.length, (index) {
-                    final plan = plans[index];
-
-                    return PlanCard(
-                      title: plan["title"] as String,
-                      price: plan["price"] as String,
-                      features:
-                          List<String>.from(plan["features"] as List),
-                      isSelected: selectedIndex == index,
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = index;
-                        });
+                    Navigator.pushNamed(
+                      context,
+                      '/checkout',
+                      arguments: {
+                        "product": product,
+                        "variant": selectedVariant,
                       },
                     );
-                  }),
-                ],
-              ),
-            ),
+                  },
+                ),
 
-            /// 🔥 ORDER BUTTON
-            PrimaryButton(
-              text: "Order Now",
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  '/checkout',
-                  arguments: plans[selectedIndex],
-                );
-              },
+                Space.h20,
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
 
-            Space.h20,
-          ],
+  Widget _tag(BuildContext context, String text) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: theme.colorScheme.primary,
+          fontSize: 12,
         ),
       ),
     );

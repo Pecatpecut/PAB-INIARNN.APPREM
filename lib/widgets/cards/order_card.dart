@@ -1,101 +1,187 @@
 import 'package:flutter/material.dart';
 
 class OrderCard extends StatelessWidget {
-  final String title;
-  final String date;
-  final String price;
-  final String status;
-  final VoidCallback onTap;
+  final Map data;
+  final VoidCallback? onTap;
 
   const OrderCard({
     super.key,
-    required this.title,
-    required this.date,
-    required this.price,
-    required this.status,
-    required this.onTap,
+    required this.data,
+    this.onTap,
   });
-
-  Color getStatusColor() {
-    switch (status) {
-      case "success":
-        return Colors.green;
-      case "pending":
-        return Colors.orange;
-      case "expired":
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String getStatusText() {
-    switch (status) {
-      case "success":
-        return "Success";
-      case "pending":
-        return "Pending";
-      case "expired":
-        return "Expired";
-      default:
-        return status;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final productName = data['product_name'] ?? '-';
+    final variantType = data['variant_type'] ?? '-';
+    final duration = data['duration_days'] ?? 0;
+    final price = data['price'] ?? 0;
+    final status = data['status'] ?? 'pending';
+
+    final imageUrl =
+        data['products'] != null ? data['products']['image'] : null;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 15),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 20),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF1B1B2F),
+              Color(0xFF1F1F3A),
+            ],
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            /// 🔥 TOP
+            /// 🔥 HEADER
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title,
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold)),
 
+                /// 🔥 IMAGE DARI SUPABASE
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                  width: 50,
+                  height: 50,
                   decoration: BoxDecoration(
-                    color: getStatusColor().withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.black,
                   ),
-                  child: Text(
-                    getStatusText(),
-                    style: TextStyle(
-                      color: getStatusColor(),
-                      fontWeight: FontWeight.bold,
-                    ),
+                  clipBehavior: Clip.hardEdge,
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.image_not_supported);
+                          },
+                        )
+                      : Center(
+                          child: Text(
+                            productName[0],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                ),
+
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        productName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const Text(
+                        "Premium Subscription",
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 15),
 
-            Text(date, style: const TextStyle(color: Colors.grey)),
+            /// 🔥 BADGE
+            Row(
+              children: [
+                _badge(
+                  text: "$duration Days",
+                  color: Colors.purpleAccent,
+                ),
+                const SizedBox(width: 8),
+                _badge(
+                  text: status.toUpperCase(),
+                  color: _statusColor(status),
+                ),
+              ],
+            ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 15),
 
-            Text(price,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            /// 🔥 VARIANT BOX
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    variantType,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  Text(
+                    "Rp $price",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _badge({required String text, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'success':
+        return Colors.greenAccent;
+      case 'pending':
+        return Colors.orangeAccent;
+      case 'expired':
+        return Colors.redAccent;
+      default:
+        return Colors.grey;
+    }
   }
 }
