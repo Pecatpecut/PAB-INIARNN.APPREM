@@ -1,63 +1,93 @@
 import 'package:flutter/material.dart';
-import '../../core/constants.dart';
+import '../../services/product_service.dart';
 
-class AdminAddVariantPage extends StatelessWidget {
+class AdminAddVariantPage extends StatefulWidget {
   const AdminAddVariantPage({super.key});
+
+  @override
+  State<AdminAddVariantPage> createState() =>
+      _AdminAddVariantPageState();
+}
+
+class _AdminAddVariantPageState extends State<AdminAddVariantPage> {
+  final service = ProductService();
+
+  final typeController = TextEditingController();
+  final priceController = TextEditingController();
+  final durationController = TextEditingController();
+
+  Map? variant;
+  late Map product;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map;
+
+    product = args;
+    variant = args['variant'];
+
+    /// 🔥 AUTO FILL (EDIT MODE)
+    if (variant != null) {
+      typeController.text = variant!['type'];
+      priceController.text = variant!['price'].toString();
+      durationController.text =
+          variant!['duration_days'].toString();
+    }
+  }
+
+  Future<void> submit() async {
+    if (variant == null) {
+      /// ADD
+      await service.supabase.from('product_variants').insert({
+        "product_id": product['id'],
+        "type": typeController.text,
+        "price": int.parse(priceController.text),
+        "duration_days": int.parse(durationController.text),
+        "is_active": true,
+      });
+    } else {
+      /// UPDATE
+      await service.updateVariant(variant!['id'], {
+        "type": typeController.text,
+        "price": int.parse(priceController.text),
+        "duration_days": int.parse(durationController.text),
+      });
+    }
+
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D18),
-
       appBar: AppBar(
-        title: const Text("Add Variant"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        title: Text(variant == null ? "Add Variant" : "Edit Variant"),
       ),
-
-      body: ListView(
-        padding: const EdgeInsets.all(AppConstants.padding),
-        children: [
-
-          _input("Account Type"),
-          _input("Duration"),
-          _input("Price"),
-
-          const SizedBox(height: 20),
-
-          Container(
-            height: 50,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFACA3FF), Color(0xFF6F5FEA)],
-              ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: typeController,
+              decoration: const InputDecoration(labelText: "Type"),
             ),
-            child: const Center(
-              child: Text("Save",
-                  style: TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.bold)),
+            TextField(
+              controller: priceController,
+              decoration: const InputDecoration(labelText: "Price"),
             ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _input(String hint) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white54),
-          filled: true,
-          fillColor: const Color(0xFF181826),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
+            TextField(
+              controller: durationController,
+              decoration: const InputDecoration(labelText: "Duration"),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: submit,
+              child: const Text("Save"),
+            )
+          ],
         ),
       ),
     );

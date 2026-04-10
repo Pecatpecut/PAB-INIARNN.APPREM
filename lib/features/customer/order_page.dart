@@ -118,15 +118,41 @@ class _OrderPageState extends State<OrderPage> {
         Space.h20,
 
         ...orders.map((order) {
-          return OrderCard(
-            data: order,
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                '/order-detail',
-                arguments: order,
-              );
-            },
+          return Container(
+            margin: const EdgeInsets.only(bottom: 15),
+            child: Column(
+              children: [
+
+                /// 🔥 CARD ORDER (ASLI)
+                OrderCard(
+                  data: order,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/order-detail',
+                      arguments: order,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 8),
+
+                /// 🔥 BUTTON GARANSI
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/garansi',
+                        arguments: order, // 🔥 INI KUNCI FIX ERROR KAMU
+                      );
+                    },
+                    child: const Text("Ajukan Garansi"),
+                  ),
+                ),
+              ],
+            ),
           );
         }).toList(),
       ],

@@ -1,149 +1,199 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import '../../widgets/shared/status_badge.dart';
 
-class GaransiDetailPage extends StatefulWidget {
+class GaransiDetailPage extends StatelessWidget {
   const GaransiDetailPage({super.key});
 
   @override
-  State<GaransiDetailPage> createState() => _GaransiDetailPageState();
-}
-
-class _GaransiDetailPageState extends State<GaransiDetailPage> {
-  final TextEditingController problemController = TextEditingController();
-  bool uploaded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
+    final theme = Theme.of(context);
 
-    if (args == null || args is! Map) {
+    final data =
+        ModalRoute.of(context)?.settings.arguments as Map?;
+
+    if (data == null) {
       return const Scaffold(
         body: Center(child: Text("No Data")),
       );
     }
 
-    final data = args;
-
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D18),
+      backgroundColor: theme.colorScheme.surface,
 
       appBar: AppBar(
         title: const Text("Detail Garansi"),
         backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(AppConstants.padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.surface,
+              theme.colorScheme.primary.withValues(alpha: 0.1),
+            ],
+          ),
+        ),
+
+        child: ListView(
+          padding: const EdgeInsets.all(AppConstants.padding),
           children: [
 
-            /// 🔹 ORDER INFO
-            Text(
-              data["title"],
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            /// 🔹 INPUT MASALAH
-            const Text("Masalah", style: TextStyle(color: Colors.white)),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: problemController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: "Contoh: Tidak bisa login...",
-                filled: true,
-                fillColor: const Color(0xFF1A1A2E),
-                border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radius),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            /// 🔹 UPLOAD BUKTI
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  uploaded = true;
-                });
-              },
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radius),
-                  border: Border.all(color: Colors.grey),
-                ),
-                child: Center(
-                  child: Text(
-                    uploaded
-                        ? "Bukti berhasil diupload ✓"
-                        : "Upload Screenshot",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ),
-
-            const Spacer(),
-
-            /// 🔥 SUBMIT
-            GestureDetector(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text("Berhasil"),
-                    content: const Text(
-                        "Pengajuan garansi sedang diproses"),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pop(context);
-                        },
-                        child: const Text("OK"),
-                      )
+            /// 🔥 STATUS + HEADER
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Status Garansi",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold),
+                      ),
+                      StatusBadge(status: data['status']),
                     ],
                   ),
-                );
-              },
-              child: Container(
-                height: 55,
-                decoration: BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(AppConstants.radius),
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFACA3FF),
-                      Color(0xFF6F5FEA),
-                    ],
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            /// 🔥 MASALAH USER
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Masalah",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-                child: const Center(
-                  child: Text(
-                    "Submit Garansi",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 8),
+                  Text(data['problem_description'] ?? "-"),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            /// 🔥 BUKTI IMAGE
+            if (data['proof_image'] != null &&
+                data['proof_image'].toString().isNotEmpty)
+              _card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Bukti",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(12),
+                      child: Image.network(
+                        data['proof_image'],
+                        height: 180,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+
+            const SizedBox(height: 15),
+
+            /// 🔥 ADMIN NOTE
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Respon Admin",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+
+                  if (data['admin_note'] != null &&
+                      data['admin_note']
+                          .toString()
+                          .isNotEmpty)
+                    Text(data['admin_note'])
+                  else
+                    Text(
+                      "Menunggu respon admin...",
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                ],
+              ),
             ),
+
+            const SizedBox(height: 20),
+
+            /// 🔥 STATUS MESSAGE (UX BONUS)
+            if (data['status'] == 'approved')
+              _statusInfo(
+                  "Garansi disetujui. Silakan cek instruksi dari admin.",
+                  Colors.green),
+
+            if (data['status'] == 'rejected')
+              _statusInfo(
+                  "Garansi ditolak. Periksa alasan dari admin.",
+                  Colors.red),
+
+            if (data['status'] == 'pending')
+              _statusInfo(
+                  "Garansi sedang diproses oleh admin.",
+                  Colors.orange),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 🔥 CARD STYLE
+  Widget _card({required Widget child}) {
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color:
+                theme.colorScheme.surface.withValues(alpha: 0.7),
+            borderRadius:
+                BorderRadius.circular(AppConstants.radius),
+          ),
+          child: child,
+        );
+      },
+    );
+  }
+
+  /// 🔥 STATUS INFO BOX
+  Widget _statusInfo(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color),
       ),
     );
   }

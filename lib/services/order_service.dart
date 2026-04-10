@@ -37,4 +37,26 @@ class OrderService {
 
     return List<Map<String, dynamic>>.from(data);
   }
+
+  /// 🔥 APPROVE ORDER (MANUAL INPUT ACCOUNT)
+Future<void> approveOrderManual({
+  required String orderId,
+  required String email,
+  required String password,
+}) async {
+  await supabase.from('orders').update({
+    "status": "approved",
+    "account_email": email,
+    "account_password": password,
+  }).eq('id', orderId);
+}
+
+/// 🔥 UPDATE STATUS ORDER (REJECT / DLL)
+Future<void> updateOrderStatus(String id, String status) async {
+  await supabase
+      .from('orders')
+      .update({'status': status})
+      .eq('id', id);
+}
+  
 }

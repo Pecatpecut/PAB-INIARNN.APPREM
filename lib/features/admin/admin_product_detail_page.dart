@@ -1,95 +1,119 @@
 import 'package:flutter/material.dart';
-import '../../core/constants.dart';
+import '../../services/product_service.dart';
 
-class AdminProductDetailPage extends StatelessWidget {
+class AdminProductDetailPage extends StatefulWidget {
   const AdminProductDetailPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D18),
+  State<AdminProductDetailPage> createState() =>
+      _AdminProductDetailPageState();
+}
 
-      appBar: AppBar(
-        title: const Text("Product Detail"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+class _AdminProductDetailPageState
+    extends State<AdminProductDetailPage> {
+  final service = ProductService();
 
-      body: ListView(
-        padding: const EdgeInsets.all(AppConstants.padding),
-        children: [
+  late Map product;
 
-          /// PRODUCT INFO
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF242434),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Netflix",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 5),
-                Text("Streaming Service"),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/admin-add-product');
-            },
-            child: const Text("Edit Product"),
-          ),
-
-          const SizedBox(height: 20),
-
-          const Text("Variants",
-              style: TextStyle(fontWeight: FontWeight.bold)),
-
-          const SizedBox(height: 10),
-
-          _variant("1 Month", "\$9.99"),
-          _variant("12 Months", "\$99.99"),
-
-          const SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/admin-add-variant');
-            },
-            child: const Text("Add Variant"),
-          ),
-        ],
-      ),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    product =
+        ModalRoute.of(context)!.settings.arguments as Map;
   }
 
-  Widget _variant(String name, String price) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF181826),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text("$name - $price"),
-          Row(
-            children: const [
-              Icon(Icons.edit),
-              SizedBox(width: 10),
-              Icon(Icons.delete, color: Colors.red),
-            ],
+  Future<void> deleteProduct() async {
+    await service.deleteProduct(product['id']);
+    Navigator.pop(context);
+  }
+
+  Future<void> deleteVariant(String id) async {
+    await service.deleteVariant(id);
+
+    setState(() {
+      product['product_variants']
+          .removeWhere((v) => v['id'] == id);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final variants = product['product_variants'] ?? [];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(product['name']),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: deleteProduct,
           )
         ],
+      ),
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/admin-add-variant',
+            arguments: product,
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+
+            Image.network(product['image'] ?? '', height: 120),
+            const SizedBox(height: 10),
+            Text(product['description'] ?? '-'),
+
+            const SizedBox(height: 20),
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text("Variants",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: ListView.builder(
+                itemCount: variants.length,
+                itemBuilder: (context, index) {
+                  final v = variants[index];
+
+                  return Card(
+                    child: ListTile(
+                      title: Text(v['type']),
+                      subtitle: Text(
+                          "Rp ${v['price']} • ${v['duration_days']} hari"),
+
+                      /// 🔥 DELETE VARIANT
+                      onLongPress: () => deleteVariant(v['id']),
+
+                      /// 🔥 EDIT VARIANT
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/admin-add-variant',
+                          arguments: {
+                            ...product,
+                            "variant": v,
+                          },
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            )
+          ],
+        ),
       ),
     );
   }

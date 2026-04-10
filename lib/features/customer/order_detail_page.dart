@@ -68,7 +68,9 @@ class OrderDetailPage extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 15),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: Colors.black,
+                color: theme.brightness == Brightness.dark
+              ? Colors.black
+              : theme.colorScheme.surface,
               ),
               clipBehavior: Clip.hardEdge,
               child: imageUrl != null && imageUrl.isNotEmpty
@@ -84,78 +86,89 @@ class OrderDetailPage extends StatelessWidget {
                     ),
             ),
 
-            /// 🔥 PRODUCT CARD
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF1B1B2F),
-                    Color(0xFF1F1F3A),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+  Container(
+  padding: const EdgeInsets.all(18),
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(24),
 
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          productName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      StatusBadge(status: status),
-                    ],
-                  ),
+    gradient: LinearGradient(
+      colors: theme.brightness == Brightness.dark
+          ? [
+              const Color(0xFF1B1B2F),
+              const Color(0xFF1F1F3A),
+            ]
+          : [
+              theme.colorScheme.primary.withValues(alpha: 0.08),
+              theme.colorScheme.surface,
+            ],
+    ),
 
-                  Space.h10,
+    border: Border.all(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+    ),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
 
-                  const Text(
-                    "Premium Subscription",
-                    style: TextStyle(color: Colors.white54),
-                  ),
-
-                  Space.h15,
-
-                  Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "$variant ($duration Days)",
-                        style:
-                            const TextStyle(color: Colors.white),
-                      ),
-                      Text(
-                        "Rp $price",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Space.h10,
-
-                  Text(
-                    "Order Date: $date",
-                    style:
-                        const TextStyle(color: Colors.white54),
-                  ),
-                ],
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              productName,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
               ),
             ),
+          ),
+          StatusBadge(status: status),
+        ],
+      ),
+
+      Space.h10,
+
+      Text(
+        "Premium Subscription",
+        style: TextStyle(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
+      ),
+
+      Space.h15,
+
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "$variant ($duration Days)",
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          Text(
+            "Rp $price",
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+
+      Space.h10,
+
+      Text(
+        "Order Date: $date",
+        style: TextStyle(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
+      ),
+    ],
+  ),
+),
 
             Space.h20,
 
@@ -197,7 +210,7 @@ class OrderDetailPage extends StatelessWidget {
               onTap: () {
                 Navigator.pushNamed(
                   context,
-                  '/garansi',
+                  '/garansi-form',
                   arguments: data,
                 );
               },

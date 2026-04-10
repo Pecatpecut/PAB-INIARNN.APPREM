@@ -28,11 +28,22 @@ class OrderCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF1B1B2F),
-              Color(0xFF1F1F3A),
-            ],
+          gradient: LinearGradient(
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [
+                    const Color(0xFF1B1B2F),
+                    const Color(0xFF1F1F3A),
+                  ]
+                : [
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                    Theme.of(context).colorScheme.surface,
+                  ],
+          ),
+          border: Border.all(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.05),
           ),
         ),
         child: Column(
@@ -49,7 +60,9 @@ class OrderCard extends StatelessWidget {
                   height: 50,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.black,
+                    color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.black
+                    : Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
                   ),
                   clipBehavior: Clip.hardEdge,
                   child: imageUrl != null && imageUrl.isNotEmpty
@@ -89,16 +102,18 @@ class OrderCard extends StatelessWidget {
                     children: [
                       Text(
                         productName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
-                      const Text(
-                        "Premium Subscription",
-                        style: TextStyle(color: Colors.white54),
-                      ),
+                Text(
+              "Premium Subscription",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+                ),
                     ],
                   ),
                 ),
@@ -128,7 +143,9 @@ class OrderCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black
+                : Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -136,12 +153,14 @@ class OrderCard extends StatelessWidget {
                 children: [
                   Text(
                     variantType,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                  ),
                   ),
                   Text(
                     "Rp $price",
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
