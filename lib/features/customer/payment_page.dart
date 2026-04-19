@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants.dart';
-import '../../widgets/shared/spacing.dart';
 import '../../services/order_service.dart';
 
 class PaymentPage extends StatefulWidget {

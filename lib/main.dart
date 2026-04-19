@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,18 +13,36 @@ import 'core/routes.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ✅ Edge-to-edge: hilangkan putih di navigation bar bawah
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+
+  // ✅ Portrait only — kalau mau landscape juga, hapus baris ini
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   await initializeDateFormatting('id_ID', null);
 
-  /// 🔥 LOAD ENV
+  // Load .env
   await dotenv.load(fileName: ".env");
 
-  /// 🔥 INIT SUPABASE
+  // Init Supabase
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
   );
 
-  /// 🔥 CEK USER LOGIN
+  // Cek sesi user
   final user = Supabase.instance.client.auth.currentUser;
 
   runApp(
@@ -47,15 +66,39 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: AppConstants.appName,
 
-      /// 🔥 THEME SYSTEM
+      // ✅ Theme system
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.currentTheme,
 
-      /// 🔥 ROUTING
+      // ✅ Routing
       initialRoute: initialRoute,
       routes: AppRoutes.routes,
+
+      // ✅ Builder: pastikan edge-to-edge tetap aktif
+      // saat theme berubah (dark/light toggle)
+      builder: (context, child) {
+        final isDark =
+            themeProvider.currentTheme == ThemeMode.dark ||
+            (themeProvider.currentTheme == ThemeMode.system &&
+                MediaQuery.of(context).platformBrightness ==
+                    Brightness.dark);
+
+        SystemChrome.setSystemUIOverlayStyle(
+          SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+          ),
+        );
+
+        return child!;
+      },
     );
   }
 }

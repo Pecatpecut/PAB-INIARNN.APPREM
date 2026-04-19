@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants.dart';
 import '../../widgets/shared/status_badge.dart';
 
 class GaransiDetailPage extends StatefulWidget {

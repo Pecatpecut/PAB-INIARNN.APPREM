@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/constants.dart';
 import '../../services/auth_service.dart';
 import '../../core/theme_provider.dart';
@@ -19,7 +20,6 @@ class _LoginPageState extends State<LoginPage>
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
-  // ✅ Animasi fade + slide sama seperti RegisterPage
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
@@ -55,7 +55,6 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Future<void> _login() async {
-    // Tutup keyboard
     FocusScope.of(context).unfocus();
 
     if (_emailController.text.trim().isEmpty ||
@@ -95,7 +94,6 @@ class _LoginPageState extends State<LoginPage>
     }
   }
 
-  // ✅ SnackBar konsisten dengan RegisterPage
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -125,17 +123,20 @@ class _LoginPageState extends State<LoginPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: true,
       body: Container(
         width: double.infinity,
+        constraints: BoxConstraints(minHeight: screenHeight),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
                 ? [
-                    const Color(0xFF0A0A14),
-                    const Color(0xFF111124),
+                    AppConstants.darkBg1,
+                    AppConstants.darkBg2,
                     theme.colorScheme.primary.withValues(alpha: 0.18),
                   ]
                 : [
@@ -149,43 +150,62 @@ class _LoginPageState extends State<LoginPage>
           ),
         ),
         child: SafeArea(
+          bottom: false,
           child: FadeTransition(
             opacity: _fadeAnim,
             child: SlideTransition(
               position: _slideAnim,
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 20,
+                  padding: EdgeInsets.fromLTRB(
+                    AppConstants.paddingH,
+                    20,
+                    AppConstants.paddingH,
+                    MediaQuery.of(context).padding.bottom + 24,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
 
-                      // ─────────────────────────────
-                      // NAVBAR — konsisten dengan Register
-                      // ─────────────────────────────
+                      // ── NAVBAR ──
                       Row(
                         children: [
-                          Icon(
-                            Icons.blur_on,
-                            size: 18,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            "INIARNN.APPREM",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.8,
-                              color: theme.colorScheme.primary,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      theme.colorScheme.primary,
+                                      theme.colorScheme.secondary,
+                                    ],
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.blur_on,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                "INIARNN.APPREM",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.8,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
                           ),
                           const Spacer(),
-                          // ✅ Toggle dark/light tetap ada di Login
                           GestureDetector(
                             onTap: () {
                               Provider.of<ThemeProvider>(
@@ -204,7 +224,9 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                               ),
                               child: Icon(
-                                isDark ? Icons.light_mode : Icons.dark_mode,
+                                isDark
+                                    ? Icons.light_mode_outlined
+                                    : Icons.dark_mode_outlined,
                                 size: 16,
                                 color: theme.colorScheme.primary,
                               ),
@@ -213,15 +235,13 @@ class _LoginPageState extends State<LoginPage>
                         ],
                       ),
 
-                      const SizedBox(height: 32),
+                      // ✅ Jarak atas adaptif — iPhone SE lebih kecil
+                      SizedBox(height: screenHeight < 700 ? 24 : 48),
 
-                      // ─────────────────────────────
-                      // LOGO — sama persis dengan Register
-                      // ─────────────────────────────
+                      // ── LOGO ──
                       Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Aura luar
                           Container(
                             width: 110,
                             height: 110,
@@ -236,7 +256,6 @@ class _LoginPageState extends State<LoginPage>
                               ),
                             ),
                           ),
-                          // Foto profil
                           Container(
                             width: 88,
                             height: 88,
@@ -267,9 +286,7 @@ class _LoginPageState extends State<LoginPage>
 
                       const SizedBox(height: 20),
 
-                      // ─────────────────────────────
-                      // HEADING
-                      // ─────────────────────────────
+                      // ── HEADING ──
                       Text(
                         "iniarnn.apprem",
                         style: TextStyle(
@@ -292,13 +309,12 @@ class _LoginPageState extends State<LoginPage>
 
                       const SizedBox(height: 28),
 
-                      // ─────────────────────────────
-                      // FORM CARD — identik dengan Register
-                      // ─────────────────────────────
+                      // ── FORM CARD ──
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(
+                              AppConstants.dialogRadius),
                           gradient: LinearGradient(
                             colors: isDark
                                 ? [
@@ -317,29 +333,19 @@ class _LoginPageState extends State<LoginPage>
                                 ? Colors.white.withValues(alpha: 0.08)
                                 : Colors.black.withValues(alpha: 0.04),
                           ),
-                          boxShadow: isDark
-                              ? [
-                                  BoxShadow(
-                                    color:
-                                        Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ]
-                              : [
-                                  BoxShadow(
-                                    color:
-                                        Colors.black.withValues(alpha: 0.07),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.07),
+                              blurRadius: isDark ? 30 : 24,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
-                            // Header card
                             Text(
                               "Welcome Back",
                               style: TextStyle(
@@ -381,7 +387,6 @@ class _LoginPageState extends State<LoginPage>
 
                             const SizedBox(height: 28),
 
-                            // Button / Loading — AnimatedSwitcher sama dengan Register
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 300),
                               child: _isLoading
@@ -422,7 +427,6 @@ class _LoginPageState extends State<LoginPage>
 
                             const SizedBox(height: 16),
 
-                            // Register link
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -436,13 +440,10 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pushNamed(
-                                    context,
-                                    '/register',
-                                  ),
+                                      context, '/register'),
                                   style: TextButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
+                                        horizontal: 8),
                                     minimumSize: Size.zero,
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
@@ -461,8 +462,6 @@ class _LoginPageState extends State<LoginPage>
                           ],
                         ),
                       ),
-
-                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
@@ -475,7 +474,7 @@ class _LoginPageState extends State<LoginPage>
   }
 
   // ─────────────────────────────────────
-  // WIDGET HELPERS — identik dengan Register
+  // WIDGET HELPERS
   // ─────────────────────────────────────
 
   Widget _label(String text) {
@@ -508,10 +507,7 @@ class _LoginPageState extends State<LoginPage>
       controller: controller,
       obscureText: isPassword && !_isPasswordVisible,
       keyboardType: inputType,
-      style: TextStyle(
-        fontSize: 14,
-        color: theme.colorScheme.onSurface,
-      ),
+      style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(

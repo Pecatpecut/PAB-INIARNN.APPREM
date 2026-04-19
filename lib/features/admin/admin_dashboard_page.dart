@@ -364,7 +364,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
         ),
         const SizedBox(width: 10),
         Text(
-          "Arini Store",
+          "INIARNN.APPREM",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -444,7 +444,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
                 children: [
                   const Icon(Icons.receipt_outlined,
                       color: Colors.white, size: 16),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 10),
                   const Text(
                     "Kelola Order",
                     style: TextStyle(
@@ -480,47 +480,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage>
 
         const SizedBox(width: 12),
 
-        // ✅ Export Report
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              // TODO: implement export
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : Colors.grey.shade100,
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.05),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.download_outlined,
-                      size: 16,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6)),
-                  const SizedBox(width: 6),
-                  Text(
-                    "Export",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        
       ],
     );
   }

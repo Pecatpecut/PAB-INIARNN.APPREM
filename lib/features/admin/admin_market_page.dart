@@ -212,7 +212,7 @@ class _AdminMarketPageState extends State<AdminMarketPage>
             ),
             const SizedBox(width: 10),
             Text(
-              "Arini Store",
+              "INIARNN.APPREM",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

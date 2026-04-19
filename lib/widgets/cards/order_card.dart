@@ -13,9 +13,10 @@ class PremiumOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    /// 🔥 SAFE PARSE DATA
-    final createdAt = DateTime.tryParse(data['created_at'] ?? '') ?? DateTime.now();
+    final createdAt =
+        DateTime.tryParse(data['created_at'] ?? '') ?? DateTime.now();
     final duration = data['duration_days'] ?? 30;
     final status = (data['status'] ?? 'pending').toString();
     final imageUrl = data['products']?['image'];
@@ -24,159 +25,217 @@ class PremiumOrderCard extends StatelessWidget {
     final now = DateTime.now();
 
     int remaining = endDate.difference(now).inDays;
-
-    /// 🔥 FIX NEGATIF (PENTING)
     if (remaining < 0) remaining = 0;
 
-    /// 🔥 STATUS LOGIC
     final isApproved = status == 'approved';
     final isPending = status == 'pending';
     final isExpired = isApproved && remaining == 0;
     final isActive = isApproved && remaining > 0;
 
-    /// 🔥 PROGRESS
     double progress = duration > 0 ? (remaining / duration) : 0;
     if (progress < 0) progress = 0;
+
+    // ✅ Warna dinamis status
+    final Color statusColor = isActive
+        ? Colors.green
+        : isPending
+            ? Colors.orange
+            : Colors.redAccent;
+
+    final String statusLabel = isActive
+        ? "AKTIF"
+        : isPending
+            ? "PENDING"
+            : "EXPIRED";
+
+    final IconData statusIcon = isActive
+        ? Icons.check_circle_outline
+        : isPending
+            ? Icons.hourglass_empty_outlined
+            : Icons.cancel_outlined;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 15),
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.primary.withValues(alpha: 0.1),
-            ],
+            colors: isDark
+                ? [
+                    Colors.white.withValues(alpha: 0.06),
+                    Colors.white.withValues(alpha: 0.02),
+                  ]
+                : [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : Colors.black.withValues(alpha: 0.04),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            /// 🔥 TOP SECTION
+            // ── Baris atas: thumbnail + info + badge
             Row(
               children: [
-
-                /// 🔥 IMAGE (NO DUMMY ERROR)
-
-
-Container(
-  width: 50,
-  height: 50,
-  decoration: BoxDecoration(
-    borderRadius: BorderRadius.circular(12),
-    color: Colors.black,
-  ),
-  clipBehavior: Clip.hardEdge,
-  child: imageUrl != null && imageUrl.toString().isNotEmpty
-      ? Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.image_not_supported),
-        )
-      : const Icon(Icons.image),
-),
+                // Thumbnail
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : Colors.grey.shade100,
+                    border: Border.all(
+                      color: theme.colorScheme.primary
+                          .withValues(alpha: 0.12),
+                    ),
+                  ),
+                  clipBehavior: Clip.hardEdge,
+                  child: imageUrl != null &&
+                          imageUrl.toString().isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 22,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.3),
+                          ),
+                        )
+                      : Icon(
+                          Icons.inventory_2_outlined,
+                          size: 22,
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.4),
+                        ),
+                ),
 
                 const SizedBox(width: 12),
 
-                /// 🔥 TEXT
+                // Info teks
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         data['product_name'] ?? '-',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        "${data['variant_type'] ?? '-'} • $duration Days",
                         style: TextStyle(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.6),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: theme.colorScheme.onSurface,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          _infoChip(
+                            Icons.layers_outlined,
+                            data['variant_type'] ?? '-',
+                            theme,
+                            isDark,
+                          ),
+                          const SizedBox(width: 6),
+                          _infoChip(
+                            Icons.timelapse_outlined,
+                            "$duration hari",
+                            theme,
+                            isDark,
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
 
-                /// 🔥 STATUS BADGE (FIX)
+                const SizedBox(width: 8),
+
+                // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                      horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: isActive
-                        ? Colors.green.withValues(alpha: 0.2)
-                        : isPending
-                            ? Colors.orange.withValues(alpha: 0.2)
-                            : Colors.red.withValues(alpha: 0.2),
+                    color: statusColor.withValues(alpha: 0.12),
+                    border: Border.all(
+                        color: statusColor.withValues(alpha: 0.3)),
                   ),
-                  child: Text(
-                    isActive
-                        ? "ACTIVE"
-                        : isPending
-                            ? "PENDING"
-                            : "EXPIRED",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isActive
-                          ? Colors.green
-                          : isPending
-                              ? Colors.orange
-                              : Colors.red,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 11, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        statusLabel,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 16),
 
-            /// 🔥 LABEL
-            Text(
-              "Subscription Progress",
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.colorScheme.onSurface
-                    .withValues(alpha: 0.6),
-              ),
+            Divider(
+              height: 1,
+              color:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.06),
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 14),
 
-            /// 🔥 PROGRESS BAR
-            Stack(
+            // ── Progress section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: theme.colorScheme.surface
-                        .withValues(alpha: 0.3),
+                Text(
+                  "Subscription Progress",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.45),
                   ),
                 ),
-                FractionallySizedBox(
-                  widthFactor: isPending ? 0 : progress,
-                  child: Container(
-                    height: 6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      gradient: LinearGradient(
-                        colors: isExpired
-                            ? [Colors.red, Colors.redAccent]
-                            : [
-                                theme.colorScheme.primary,
-                                theme.colorScheme.secondary,
-                              ],
-                      ),
-                    ),
+                Text(
+                  isPending
+                      ? "Menunggu aktivasi"
+                      : isExpired
+                          ? "Berakhir"
+                          : "$remaining hari tersisa",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isExpired
+                        ? Colors.redAccent
+                        : isPending
+                            ? Colors.orange
+                            : theme.colorScheme.primary,
                   ),
                 ),
               ],
@@ -184,26 +243,92 @@ Container(
 
             const SizedBox(height: 8),
 
-            /// 🔥 STATUS TEXT (FIX TOTAL)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                isPending
-                    ? "Menunggu aktivasi"
-                    : isExpired
-                        ? "Masa premium telah berakhir"
-                        : "$remaining Days Left",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isExpired
-                      ? Colors.red
-                      : theme.colorScheme.primary,
-                ),
+            // ✅ Progress bar rounded + gradient
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Stack(
+                children: [
+                  // Track
+                  Container(
+                    height: 7,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.07)
+                          : Colors.grey.shade200,
+                    ),
+                  ),
+                  // Fill
+                  FractionallySizedBox(
+                    widthFactor: isPending ? 0 : progress,
+                    child: Container(
+                      height: 7,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isExpired
+                              ? [Colors.redAccent, Colors.red]
+                              : progress < 0.25
+                                  ? [Colors.orange, Colors.amber]
+                                  : [
+                                      theme.colorScheme.primary,
+                                      theme.colorScheme.secondary,
+                                    ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+
+            // ✅ Tanda peringatan jika mendekati habis
+            if (isActive && progress < 0.25 && progress > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 13, color: Colors.orange),
+                  const SizedBox(width: 4),
+                  Text(
+                    "Segera perpanjang langgananmu",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _infoChip(
+    IconData icon,
+    String label,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 11,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
+        ),
+      ],
     );
   }
 }
