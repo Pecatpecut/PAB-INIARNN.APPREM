@@ -1,23 +1,34 @@
-# Perancangan Aplikasi Manajemen Transaksi dan Masa Aktif Akun Premium
+# 🐰 INIARNN.APPREM
 
 Aplikasi mobile berbasis **Flutter** dan **Supabase** untuk manajemen penjualan akun premium, pelacakan masa aktif langganan, serta pengelolaan klaim garansi secara end-to-end.
 
 ---
 
-## Deskripsi Aplikasi
+## 👥 Nama Anggota Kelompok
+
+| Nama | NIM |
+|---|---|
+| Muhammad Rizky Febrianto | 2409116045 |
+| Chiqo Nanda Rial Pratama | 2409116046 |
+| Daffa Syahrandy Husain | 2409116069 |
+| Marcela Persa Linthin| 2409116072 |
+
+---
+
+## 📝 Deskripsi Aplikasi
 
 Aplikasi ini dirancang untuk membantu reseller/owner akun premium dalam mengelola transaksi, memantau masa aktif pelanggan, dan memproses klaim garansi secara efisien. Terdapat dua peran utama:
 
-- **Customer** — dapat mendaftar, melihat katalog produk, melakukan pembelian, memantau status pesanan, dan mengajukan klaim garansi.
-- **Admin/Owner** — dapat mengelola produk dan varian, mengkonfirmasi pesanan, memproses klaim garansi, serta memantau laporan keuangan melalui dashboard.
+- 👤 **Customer** — dapat mendaftar, melihat katalog produk, melakukan pembelian, memantau status pesanan, dan mengajukan klaim garansi.
+- 👑 **Admin** — dapat mengelola produk dan varian, mengkonfirmasi pesanan, memproses klaim garansi, serta memantau laporan keuangan melalui dashboard.
 
 Data disimpan secara real-time di **Supabase** (PostgreSQL), termasuk tabel `users`, `products`, `product_variants`, `orders`, `subscriptions`, `transactions`, dan `claims`.
 
 ---
 
-## Fitur Aplikasi
+## ✨ Fitur Aplikasi
 
-### Customer
+### 👤 Customer
 | Fitur | Keterangan |
 |---|---|
 | Register & Login | Autentikasi menggunakan Supabase Auth |
@@ -35,7 +46,7 @@ Data disimpan secara real-time di **Supabase** (PostgreSQL), termasuk tabel `use
 | Rules & Terms | Ketentuan sebelum melakukan pembelian |
 | Kontak & Sosial Media | Langsung buka WhatsApp, Instagram, X (Twitter) |
 
-### Admin/Owner
+### 👑 Admin
 | Fitur | Keterangan |
 |---|---|
 | Dashboard | Statistik total transaksi, pendapatan, pengguna, dan order pending |
@@ -52,7 +63,7 @@ Data disimpan secara real-time di **Supabase** (PostgreSQL), termasuk tabel `use
 
 ---
 
-## Widget yang Digunakan
+## 🧩 Widget yang Digunakan
 
 ### Structural Widgets
 - `Scaffold`, `SafeArea`, `Column`, `Row`, `Expanded`, `Stack`
@@ -79,7 +90,7 @@ Data disimpan secara real-time di **Supabase** (PostgreSQL), termasuk tabel `use
 - `AnimationController`, `FadeTransition`, `SlideTransition`
 - `ScaleTransition`, `CurvedAnimation`, `Tween`
 
-### Custom Widgets (lib/widgets/)
+### 🧱 Custom Widgets (lib/widgets/)
 | Widget | Fungsi |
 |---|---|
 | `PrimaryButton` | Tombol utama dengan gradient |
@@ -96,7 +107,7 @@ Data disimpan secara real-time di **Supabase** (PostgreSQL), termasuk tabel `use
 
 ---
 
-## Nilai Tambah: Package Tambahan
+## ➕ Nilai Tambah: Package Tambahan
 
 Berikut package tambahan yang digunakan beserta penjelasannya:
 
@@ -130,7 +141,7 @@ Digunakan untuk:
 
 ---
 
-## Struktur Folder
+## 📁 Struktur Folder
 
 ```
 lib/
@@ -209,7 +220,7 @@ lib/
 
 ---
 
-## Database (Supabase)
+## 🗄️ Database (Supabase)
 
 | Tabel | Fungsi |
 |---|---|
