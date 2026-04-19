@@ -1,7 +1,5 @@
 # 🐰 INIARNN.APPREM
 
-Aplikasi mobile berbasis **Flutter** dan **Supabase** untuk manajemen penjualan akun premium, pelacakan masa aktif langganan, serta pengelolaan klaim garansi secara end-to-end.
-
 ---
 
 ## 👥 Nama Anggota Kelompok
@@ -17,6 +15,7 @@ Aplikasi mobile berbasis **Flutter** dan **Supabase** untuk manajemen penjualan 
 
 ## 📝 Deskripsi Aplikasi
 
+Aplikasi mobile berbasis **Flutter** dan **Supabase** untuk manajemen penjualan akun premium, pelacakan masa aktif langganan, serta pengelolaan klaim garansi secara end-to-end.
 Aplikasi ini dirancang untuk membantu reseller/owner akun premium dalam mengelola transaksi, memantau masa aktif pelanggan, dan memproses klaim garansi secara efisien. Terdapat dua peran utama:
 
 - 👤 **Customer** — dapat mendaftar, melihat katalog produk, melakukan pembelian, memantau status pesanan, dan mengajukan klaim garansi.
