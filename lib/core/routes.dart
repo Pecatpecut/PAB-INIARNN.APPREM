@@ -18,7 +18,6 @@ import '../features/customer/garansi_page.dart';
 import '../features/customer/garansi_detail_page.dart';
 import '../features/customer/garansiformpage.dart';
 import '../features/customer/search_page.dart';
-import '../features/customer/info_page.dart';
 import '../features/customer/rules_page.dart';
 import '../features/customer/social_page.dart';
 
@@ -53,7 +52,6 @@ class AppRoutes {
     '/garansi': (context) => const GaransiPage(),
     '/garansi-detail': (context) => const GaransiDetailPage(),
     '/search': (context) => const SearchPage(),
-    '/info': (context) => const InfoPage(),
     '/rules': (context) => const RulesPage(),
     '/social': (context) => const SocialPage(),
     '/garansi-form': (context) => const GaransiFormPage(),

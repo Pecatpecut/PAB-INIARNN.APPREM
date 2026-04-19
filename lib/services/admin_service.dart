@@ -27,6 +27,15 @@ class AdminService {
     return total;
   }
 
+  Future<int> getPendingOrders() async {
+  final response = await supabase
+      .from('orders')
+      .select()
+      .eq('status', 'pending');
+
+  return response.length;
+}
+
   /// 🔥 INCOME PER BULAN (SIMPLE)
   Future<List<int>> getMonthlyIncome() async {
     final data = await supabase.from('orders').select('price, created_at');

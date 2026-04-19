@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class OrderCard extends StatelessWidget {
+class PremiumOrderCard extends StatelessWidget {
   final Map data;
   final VoidCallback? onTap;
 
-  const OrderCard({
+  const PremiumOrderCard({
     super.key,
     required this.data,
     this.onTap,
@@ -12,195 +12,198 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final productName = data['product_name'] ?? '-';
-    final variantType = data['variant_type'] ?? '-';
-    final duration = data['duration_days'] ?? 0;
-    final price = data['price'] ?? 0;
-    final status = data['status'] ?? 'pending';
+    final theme = Theme.of(context);
 
-    final imageUrl =
-        data['products'] != null ? data['products']['image'] : null;
+    /// 🔥 SAFE PARSE DATA
+    final createdAt = DateTime.tryParse(data['created_at'] ?? '') ?? DateTime.now();
+    final duration = data['duration_days'] ?? 30;
+    final status = (data['status'] ?? 'pending').toString();
+    final imageUrl = data['products']?['image'];
+
+    final endDate = createdAt.add(Duration(days: duration));
+    final now = DateTime.now();
+
+    int remaining = endDate.difference(now).inDays;
+
+    /// 🔥 FIX NEGATIF (PENTING)
+    if (remaining < 0) remaining = 0;
+
+    /// 🔥 STATUS LOGIC
+    final isApproved = status == 'approved';
+    final isPending = status == 'pending';
+    final isExpired = isApproved && remaining == 0;
+    final isActive = isApproved && remaining > 0;
+
+    /// 🔥 PROGRESS
+    double progress = duration > 0 ? (remaining / duration) : 0;
+    if (progress < 0) progress = 0;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 15),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: Theme.of(context).brightness == Brightness.dark
-                ? [
-                    const Color(0xFF1B1B2F),
-                    const Color(0xFF1F1F3A),
-                  ]
-                : [
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-                    Theme.of(context).colorScheme.surface,
-                  ],
-          ),
-          border: Border.all(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.05),
+            colors: [
+              theme.colorScheme.surface,
+              theme.colorScheme.primary.withValues(alpha: 0.1),
+            ],
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            /// 🔥 HEADER
+            /// 🔥 TOP SECTION
             Row(
               children: [
 
-                /// 🔥 IMAGE DARI SUPABASE
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.black
-                    : Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-                  ),
-                  clipBehavior: Clip.hardEdge,
-                  child: imageUrl != null && imageUrl.isNotEmpty
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.image_not_supported);
-                          },
-                        )
-                      : Center(
-                          child: Text(
-                            productName[0],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                ),
+                /// 🔥 IMAGE (NO DUMMY ERROR)
+
+
+Container(
+  width: 50,
+  height: 50,
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(12),
+    color: Colors.black,
+  ),
+  clipBehavior: Clip.hardEdge,
+  child: imageUrl != null && imageUrl.toString().isNotEmpty
+      ? Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.image_not_supported),
+        )
+      : const Icon(Icons.image),
+),
 
                 const SizedBox(width: 12),
 
+                /// 🔥 TEXT
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        productName,
-                        style: TextStyle(
-                          fontSize: 16,
+                        data['product_name'] ?? '-',
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 16,
                         ),
                       ),
-                Text(
-              "Premium Subscription",
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-                ),
+                      Text(
+                        "${data['variant_type'] ?? '-'} • $duration Days",
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
 
-            const SizedBox(height: 15),
-
-            /// 🔥 BADGE
-            Row(
-              children: [
-                _badge(
-                  text: "$duration Days",
-                  color: Colors.purpleAccent,
-                ),
-                const SizedBox(width: 8),
-                _badge(
-                  text: status.toUpperCase(),
-                  color: _statusColor(status),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 15),
-
-            /// 🔥 VARIANT BOX
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black
-                : Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    variantType,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
+                /// 🔥 STATUS BADGE (FIX)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: isActive
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : isPending
+                            ? Colors.orange.withValues(alpha: 0.2)
+                            : Colors.red.withValues(alpha: 0.2),
                   ),
-                  ),
-                  Text(
-                    "Rp $price",
+                  child: Text(
+                    isActive
+                        ? "ACTIVE"
+                        : isPending
+                            ? "PENDING"
+                            : "EXPIRED",
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: isActive
+                          ? Colors.green
+                          : isPending
+                              ? Colors.orange
+                              : Colors.red,
                     ),
                   ),
-                ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 15),
+
+            /// 🔥 LABEL
+            Text(
+              "Subscription Progress",
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurface
+                    .withValues(alpha: 0.6),
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            /// 🔥 PROGRESS BAR
+            Stack(
+              children: [
+                Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: theme.colorScheme.surface
+                        .withValues(alpha: 0.3),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: isPending ? 0 : progress,
+                  child: Container(
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      gradient: LinearGradient(
+                        colors: isExpired
+                            ? [Colors.red, Colors.redAccent]
+                            : [
+                                theme.colorScheme.primary,
+                                theme.colorScheme.secondary,
+                              ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            /// 🔥 STATUS TEXT (FIX TOTAL)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                isPending
+                    ? "Menunggu aktivasi"
+                    : isExpired
+                        ? "Masa premium telah berakhir"
+                        : "$remaining Days Left",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isExpired
+                      ? Colors.red
+                      : theme.colorScheme.primary,
+                ),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _badge({required String text, required Color color}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'success':
-        return Colors.greenAccent;
-      case 'pending':
-        return Colors.orangeAccent;
-      case 'expired':
-        return Colors.redAccent;
-      default:
-        return Colors.grey;
-    }
   }
 }

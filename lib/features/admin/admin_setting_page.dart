@@ -11,286 +11,893 @@ class AdminSettingPage extends StatefulWidget {
   State<AdminSettingPage> createState() => _AdminSettingPageState();
 }
 
-class _AdminSettingPageState extends State<AdminSettingPage> {
+class _AdminSettingPageState extends State<AdminSettingPage>
+    with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
 
   String name = "Admin";
   String email = "admin@email.com";
   bool isLoading = true;
+  bool _isLoggingOut = false;
 
-  bool maintenanceMode = false;
-  bool allowRegister = true;
+
+  // ✅ Animasi konsisten dengan seluruh halaman
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
-    fetchUser();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.07),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
+    _fetchUser();
   }
 
-  Future<void> fetchUser() async {
-    final user = supabase.auth.currentUser;
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
-    if (user != null) {
+  Future<void> _fetchUser() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
       final data = await supabase
           .from('users')
           .select('name, email')
           .eq('id', user.id)
           .single();
 
+      if (!mounted) return;
       setState(() {
-        name = data['name'] ?? "Admin";
-        email = data['email'] ?? "-";
+        name = data['name'] ?? 'Admin';
+        email = data['email'] ?? '-';
         isLoading = false;
       });
+      _animController.forward();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      _animController.forward();
+    }
+  }
+
+  void _showSnackBar(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────
+  // LOGOUT dengan konfirmasi dialog
+  // ─────────────────────────────────
+  Future<void> _logout() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF111124), const Color(0xFF0A0A14)]
+                  : [Colors.white, Colors.grey.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.04),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 40,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.redAccent.withValues(alpha: 0.12),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Colors.redAccent,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                "Keluar Akun?",
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Kamu akan keluar dari sesi admin ini.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context, false),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.grey.shade100,
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Batal",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context, true),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.redAccent.withValues(alpha: 0.12),
+                          border: Border.all(
+                            color: Colors.redAccent.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "Logout",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoggingOut = true);
+    try {
+      await supabase.auth.signOut();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoggingOut = false);
+      _showSnackBar('Gagal logout, coba lagi', isError: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-
+      backgroundColor: Colors.transparent,
       body: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.primary.withValues(alpha: 0.1),
-            ],
+            colors: isDark
+                ? [
+                    const Color(0xFF0A0A14),
+                    const Color(0xFF111124),
+                    theme.colorScheme.primary.withValues(alpha: 0.18),
+                  ]
+                : [
+                    Colors.white,
+                    theme.colorScheme.primary.withValues(alpha: 0.04),
+                    theme.colorScheme.primary.withValues(alpha: 0.10),
+                  ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.5, 1.0],
           ),
         ),
-
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(AppConstants.padding),
-            children: [
+          child: isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : FadeTransition(
+                  opacity: _fadeAnim,
+                  child: SlideTransition(
+                    position: _slideAnim,
+                    child: Column(
+                      children: [
+                        // ──────────────────────────────
+                        // CUSTOM APPBAR
+                        // ──────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 16),
+                          child: Row(
+                            children: [
+                              const Spacer(),
+                              Text(
+                                "Admin Settings",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const Spacer(),
+                              const SizedBox(width: 38),
+                            ],
+                          ),
+                        ),
 
-              /// 🔥 HEADER
-              Text(
-                "Admin Settings",
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+                        // ──────────────────────────────
+                        // SCROLLABLE CONTENT
+                        // ──────────────────────────────
+                        Expanded(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // ─────────────────────
+                                // PROFILE CARD
+                                // ─────────────────────
+                                _buildProfileCard(theme, isDark),
 
-              const SizedBox(height: 20),
+                                const SizedBox(height: 28),
 
-              /// 🔥 PROFILE CARD
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: LinearGradient(
-                    colors: theme.brightness == Brightness.dark
-                        ? [
-                            const Color(0xFF1B1B2F),
-                            const Color(0xFF1F1F3A),
-                          ]
-                        : [
-                            theme.colorScheme.primary.withValues(alpha: 0.1),
-                            theme.colorScheme.surface,
-                          ],
+                                // ─────────────────────
+                                // STORE CONFIGURATION
+                                // ─────────────────────
+                                _sectionLabel("KONFIGURASI TOKO", theme),
+                                const SizedBox(height: 12),
+                                _buildConfigCard(theme, isDark, themeProvider),
+
+                                const SizedBox(height: 28),
+
+                                // ─────────────────────
+                                // ABOUT / APP INFO
+                                // ─────────────────────
+                                _sectionLabel("INFORMASI APLIKASI", theme),
+                                const SizedBox(height: 12),
+                                _buildAppInfoCard(theme, isDark),
+
+                                const SizedBox(height: 28),
+
+                                // ─────────────────────
+                                // LOGOUT BUTTON
+                                // ─────────────────────
+                                _buildLogoutButton(theme, isDark),
+
+                                const SizedBox(height: 32),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                child: Column(
-                  children: [
+        ),
+      ),
+    );
+  }
 
-                    CircleAvatar(
-                      radius: 45,
-                      backgroundColor:
-                          theme.colorScheme.primary.withValues(alpha: 0.2),
+  // ────────────────────────────────────────────
+  // PROFILE CARD
+  // ────────────────────────────────────────────
+  Widget _buildProfileCard(ThemeData theme, bool isDark) {
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'A';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: 0.07),
+                  Colors.white.withValues(alpha: 0.02),
+                ]
+              : [Colors.white, Colors.grey.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Avatar dengan aura
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      theme.colorScheme.primary.withValues(alpha: 0.2),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                width: 82,
+                height: 82,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.secondary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          theme.colorScheme.primary.withValues(alpha: 0.35),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              // Badge admin di pojok kanan bawah
+              Positioned(
+                bottom: 10,
+                right: 10,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.teal,
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF0A0A14)
+                          : Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.verified,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Text(
+            name,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            email,
+            style: TextStyle(
+              fontSize: 13,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Badge ADMIN VERIFIED
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.teal.withValues(alpha: 0.12),
+              border: Border.all(
+                color: Colors.teal.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.verified, size: 13, color: Colors.teal),
+                SizedBox(width: 5),
+                Text(
+                  "ADMIN VERIFIED",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                    color: Colors.teal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Divider gradient
+          Container(
+            height: 0.5,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  theme.colorScheme.primary.withValues(alpha: 0.3),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Stats row: total orders, users, dll (statis / placeholder)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _statItem(theme, "Produk", "—", Icons.inventory_2_outlined),
+              _dividerV(theme),
+              _statItem(theme, "Pesanan", "—", Icons.receipt_long_outlined),
+              _dividerV(theme),
+              _statItem(theme, "Users", "—", Icons.people_outline_rounded),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(
+      ThemeData theme, String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: theme.colorScheme.primary),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dividerV(ThemeData theme) {
+    return Container(
+      height: 36,
+      width: 0.5,
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+    );
+  }
+
+  // ────────────────────────────────────────────
+  // STORE CONFIG CARD — glassmorphism + toggles
+  // ────────────────────────────────────────────
+  Widget _buildConfigCard(
+      ThemeData theme, bool isDark, ThemeProvider themeProvider) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: 0.07),
+                  Colors.white.withValues(alpha: 0.02),
+                ]
+              : [Colors.white, Colors.grey.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.25)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _dividerH(theme),
+          _toggleTile(
+            theme,
+            isDark,
+            icon: isDark
+                ? Icons.dark_mode_outlined
+                : Icons.light_mode_outlined,
+            iconColor: isDark ? Colors.indigo : Colors.amber,
+            title: "Dark Mode",
+            subtitle: "Ganti tampilan tema",
+            value: themeProvider.isDarkMode,
+            onChanged: (_) => themeProvider.toggleTheme(),
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleTile(
+    ThemeData theme,
+    bool isDark, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+    required bool isLast,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: iconColor.withValues(alpha: 0.12),
+              border: Border.all(
+                color: iconColor.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color:
+                        theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: theme.colorScheme.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dividerH(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Container(
+        height: 0.5,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────
+  // APP INFO CARD — versi, build, dll
+  // ────────────────────────────────────────────
+  Widget _buildAppInfoCard(ThemeData theme, bool isDark) {
+    final infos = [
+      (Icons.apps_rounded, "Nama Aplikasi", "ARNPREMM"),
+      (Icons.tag_rounded, "Versi", "1.0.0"),
+      (Icons.build_outlined, "Build", "Release"),
+      (Icons.language_outlined, "Region", "Indonesia"),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: 0.07),
+                  Colors.white.withValues(alpha: 0.02),
+                ]
+              : [Colors.white, Colors.grey.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.04),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.25)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: List.generate(infos.length, (i) {
+          final info = infos[i];
+          final isLast = i == infos.length - 1;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Icon(
+                        info.$1,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
                       child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : "A",
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                        info.$2,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.55),
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 12),
-
-                    isLoading
-                        ? const CircularProgressIndicator()
-                        : Column(
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 18),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                email,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                    const SizedBox(height: 12),
-
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Colors.teal.withValues(alpha: 0.2),
-                      ),
-                      child: const Text(
-                        "ADMIN VERIFIED",
-                        style: TextStyle(fontSize: 12),
+                    Text(
+                      info.$3,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              /// 🔥 STORE CONFIG
-              _sectionTitle("Store Configuration"),
-
-              _toggleTile(
-                "Maintenance Mode",
-                "Tutup akses user",
-                maintenanceMode,
-                (val) => setState(() => maintenanceMode = val),
-              ),
-
-              _toggleTile(
-                "Allow Registration",
-                "User bisa daftar",
-                allowRegister,
-                (val) => setState(() => allowRegister = val),
-              ),
-
-              _toggleTile(
-                "Dark Mode",
-                "Ganti tema",
-                themeProvider.isDarkMode,
-                (val) => themeProvider.toggleTheme(),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// 🔥 SYSTEM
-              _sectionTitle("System"),
-
-              _menu(Icons.password, "Change Password"),
-              _menu(Icons.security, "Security Settings"),
-
-              const SizedBox(height: 20),
-
-              /// 🔥 DANGER ZONE
-              _sectionTitle("Danger Zone", color: Colors.red),
-
-              _dangerButton("Clear Cache"),
-              _dangerButton("Reset System"),
-
-              const SizedBox(height: 30),
-
-              /// 🔥 LOGOUT
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
+              if (!isLast)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Container(
+                    height: 0.5,
+                    color:
+                        theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                  ),
                 ),
-                onPressed: () async {
-                  await supabase.auth.signOut();
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/login', (route) => false);
-                },
-                child: const Text("Logout"),
-              ),
             ],
+          );
+        }),
+      ),
+    );
+  }
+
+  // ────────────────────────────────────────────
+  // LOGOUT BUTTON
+  // ────────────────────────────────────────────
+  Widget _buildLogoutButton(ThemeData theme, bool isDark) {
+    return GestureDetector(
+      onTap: _isLoggingOut ? null : _logout,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 52,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppConstants.radius),
+          color: Colors.redAccent.withValues(alpha: 0.1),
+          border: Border.all(
+            color: Colors.redAccent.withValues(alpha: 0.4),
           ),
         ),
-      ),
-    );
-  }
-
-  /// 🔥 SECTION TITLE
-  Widget _sectionTitle(String title, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: color,
+        child: Center(
+          child: _isLoggingOut
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.redAccent,
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.logout_rounded,
+                        color: Colors.redAccent, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      "Logout",
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
   }
 
-  /// 🔥 TOGGLE TILE
-  Widget _toggleTile(
-      String title, String subtitle, bool value, Function(bool) onChanged) {
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title),
-                Text(subtitle,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.6))),
-              ]),
-          Switch(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
-
-  /// 🔥 MENU TILE
-  Widget _menu(IconData icon, String title) {
-    final theme = Theme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon),
-          const SizedBox(width: 10),
-          Expanded(child: Text(title)),
-          const Icon(Icons.arrow_forward_ios, size: 16),
-        ],
-      ),
-    );
-  }
-
-  /// 🔥 DANGER BUTTON
-  Widget _dangerButton(String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red.withValues(alpha: 0.2),
-        ),
-        onPressed: () {},
-        child: Text(title),
+  // ────────────────────────────────────────────
+  // SECTION LABEL — uppercase konsisten
+  // ────────────────────────────────────────────
+  Widget _sectionLabel(String text, ThemeData theme) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.4,
+        color: theme.colorScheme.primary.withValues(alpha: 0.75),
       ),
     );
   }

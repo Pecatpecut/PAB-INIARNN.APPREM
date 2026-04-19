@@ -10,77 +10,507 @@ class AdminOrderPage extends StatefulWidget {
 }
 
 class _AdminOrderPageState extends State<AdminOrderPage>
-    with SingleTickerProviderStateMixin {
-
+    with TickerProviderStateMixin {
   final OrderService _service = OrderService();
 
-  List orders = [];
-  bool isLoading = true;
+  List _orders = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  // ✅ Sort: 'newest' | 'oldest'
+  String _sortOrder = 'newest';
 
   late TabController _tabController;
+
+  // ✅ Animasi konsisten dengan halaman lain
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
-    fetch();
     _tabController = TabController(length: 3, vsync: this);
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+
+    _fetch();
   }
 
-  Future<void> fetch() async {
-    final data = await _service.getAllOrders();
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _animController.dispose();
+    super.dispose();
+  }
 
+  Future<void> _fetch() async {
     setState(() {
-      orders = data;
-      isLoading = false;
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final data = await _service.getAllOrders();
+      if (!mounted) return;
+      setState(() {
+        _orders = data;
+        _isLoading = false;
+      });
+      _animController.forward(from: 0);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    }
   }
 
-  /// 🔥 FILTER BY STATUS
-  List getOrdersByStatus(String status) {
-    return orders.where((o) => o['status'] == status).toList();
+  List _getByStatus(String status) {
+    final filtered =
+        _orders.where((o) => o['status'] == status).toList();
+
+    // ✅ Sort berdasarkan created_at
+    filtered.sort((a, b) {
+      final dateA =
+          DateTime.tryParse(a['created_at'] ?? '') ?? DateTime(2000);
+      final dateB =
+          DateTime.tryParse(b['created_at'] ?? '') ?? DateTime(2000);
+      return _sortOrder == 'newest'
+          ? dateB.compareTo(dateA)
+          : dateA.compareTo(dateB);
+    });
+
+    return filtered;
   }
 
-  /// 🔥 APPROVE DIALOG
-  void approveDialog(Map o) {
+  // ✅ SnackBar konsisten
+  void _showSnackBar(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  // ✅ Approve dialog — dipercantik & ada validasi
+  void _approveDialog(Map order) {
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
+    bool isSaving = false;
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Input Account"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: "Email"),
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: const InputDecoration(labelText: "Password"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await _service.approveOrderManual(
-                orderId: o['id'],
-                email: emailController.text,
-                password: passwordController.text,
-              );
+      barrierDismissible: false,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final isDark = theme.brightness == Brightness.dark;
 
-              Navigator.pop(context);
-              fetch();
-            },
-            child: const Text("Approve"),
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [
+                            const Color(0xFF1B1B2F),
+                            const Color(0xFF23233A),
+                          ]
+                        : [Colors.white, Colors.grey.shade50],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.15),
+                          ),
+                          child: Icon(
+                            Icons.key_outlined,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          "Input Akun",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Text(
+                        order['product_name'] ?? '-',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Email field
+                    _dialogLabel("EMAIL AKUN", theme),
+                    _dialogInput(
+                      "email@example.com",
+                      controller: emailController,
+                      icon: Icons.mail_outline,
+                      theme: theme,
+                      isDark: isDark,
+                      inputType: TextInputType.emailAddress,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Password field
+                    _dialogLabel("PASSWORD AKUN", theme),
+                    _dialogInput(
+                      "••••••••",
+                      controller: passwordController,
+                      icon: Icons.lock_outline,
+                      theme: theme,
+                      isDark: isDark,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: isSaving
+                                ? null
+                                : () => Navigator.pop(ctx),
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(AppConstants.radius),
+                                border: Border.all(
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Batal",
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: isSaving
+                                ? null
+                                : () async {
+                                    // ✅ Validasi
+                                    if (emailController.text.trim().isEmpty ||
+                                        passwordController.text
+                                            .trim()
+                                            .isEmpty) {
+                                      _showSnackBar(
+                                        "Email & password wajib diisi",
+                                        isError: true,
+                                      );
+                                      return;
+                                    }
+
+                                    setDialogState(() => isSaving = true);
+
+                                    try {
+                                      await _service.approveOrderManual(
+                                        orderId: order['id'],
+                                        email: emailController.text.trim(),
+                                        password:
+                                            passwordController.text.trim(),
+                                      );
+
+                                      if (!mounted) return;
+                                      Navigator.pop(ctx);
+                                      _showSnackBar(
+                                        "Order berhasil di-approve!",
+                                        isError: false,
+                                      );
+                                      _fetch();
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      setDialogState(() => isSaving = false);
+                                      _showSnackBar(
+                                        e
+                                            .toString()
+                                            .replaceAll('Exception: ', ''),
+                                        isError: true,
+                                      );
+                                    }
+                                  },
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(AppConstants.radius),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Theme.of(context).colorScheme.primary,
+                                    Theme.of(context).colorScheme.secondary,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.4),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: isSaving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text(
+                                        "Approve",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ✅ Reject dengan konfirmasi
+  void _rejectDialog(Map order) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF1B1B2F), const Color(0xFF23233A)]
+                  : [Colors.white, Colors.grey.shade50],
+            ),
+            border: Border.all(
+              color: Colors.redAccent.withValues(alpha: 0.25),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.redAccent.withValues(alpha: 0.12),
+                ),
+                child: const Icon(
+                  Icons.cancel_outlined,
+                  size: 28,
+                  color: Colors.redAccent,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                "Tolak Order?",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                "Order ${order['product_name']} akan ditolak.\nTindakan ini tidak bisa dibatalkan.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radius),
+                          border: Border.all(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Batal",
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        try {
+                          await _service.updateOrderStatus(
+                              order['id'], 'rejected');
+                          if (!mounted) return;
+                          _showSnackBar("Order ditolak", isError: false);
+                          _fetch();
+                        } catch (e) {
+                          if (!mounted) return;
+                          _showSnackBar(
+                            e.toString().replaceAll('Exception: ', ''),
+                            isError: true,
+                          );
+                        }
+                      },
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radius),
+                          color: Colors.redAccent,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.redAccent.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            "Tolak",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -88,145 +518,951 @@ class _AdminOrderPageState extends State<AdminOrderPage>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final pendingCount = _getByStatus('pending').length;
+    final approvedCount = _getByStatus('approved').length;
+    final rejectedCount = _getByStatus('rejected').length;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.transparent,
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    const Color(0xFF0A0A14),
+                    const Color(0xFF111124),
+                    theme.colorScheme.primary.withValues(alpha: 0.18),
+                  ]
+                : [
+                    Colors.white,
+                    theme.colorScheme.primary.withValues(alpha: 0.04),
+                    theme.colorScheme.primary.withValues(alpha: 0.1),
+                  ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
 
-      appBar: AppBar(
-        title: const Text("Order Management"),
-        backgroundColor: Colors.transparent,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: "Pending"),
-            Tab(text: "Approved"),
-            Tab(text: "Rejected"),
+              // ─────────────────────────────
+              // APPBAR CUSTOM
+              // ─────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      "Order Management",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Refresh button
+                    GestureDetector(
+                      onTap: _isLoading ? null : _fetch,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              )
+                            : Icon(
+                                Icons.refresh_rounded,
+                                size: 18,
+                                color: theme.colorScheme.primary,
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ─────────────────────────────
+              // SUMMARY STATS
+              // ─────────────────────────────
+              if (!_isLoading && _errorMessage == null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      _statChip(
+                          label: "Pending",
+                          count: pendingCount,
+                          color: Colors.orange,
+                          isDark: isDark),
+                      const SizedBox(width: 8),
+                      _statChip(
+                          label: "Approved",
+                          count: approvedCount,
+                          color: Colors.green,
+                          isDark: isDark),
+                      const SizedBox(width: 8),
+                      _statChip(
+                          label: "Rejected",
+                          count: rejectedCount,
+                          color: Colors.redAccent,
+                          isDark: isDark),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 16),
+
+              // ─────────────────────────────
+              // TAB BAR
+              // ─────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.grey.shade100,
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.07)
+                          : Colors.black.withValues(alpha: 0.04),
+                    ),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      borderRadius: BorderRadius.circular(11),
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primary,
+                          theme.colorScheme.secondary,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: isDark ? Colors.black : Colors.white,
+                    unselectedLabelColor:
+                        theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    tabs: [
+                      _tabItem("Pending", pendingCount, Colors.orange),
+                      _tabItem("Approved", approvedCount, Colors.green),
+                      _tabItem("Rejected", rejectedCount, Colors.redAccent),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ─────────────────────────────
+              // SORT TOGGLE
+              // ─────────────────────────────
+              if (!_isLoading && _errorMessage == null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.sort_rounded,
+                        size: 14,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        "Urutkan:",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.45),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _sortChip(
+                        label: "Terbaru",
+                        value: "newest",
+                        icon: Icons.arrow_downward_rounded,
+                        theme: theme,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(width: 8),
+                      _sortChip(
+                        label: "Terlama",
+                        value: "oldest",
+                        icon: Icons.arrow_upward_rounded,
+                        theme: theme,
+                        isDark: isDark,
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 12),
+
+              // ─────────────────────────────
+              // CONTENT
+              // ─────────────────────────────
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: theme.colorScheme.primary,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : _errorMessage != null
+                        ? _errorState(theme, isDark)
+                        : FadeTransition(
+                            opacity: _fadeAnim,
+                            child: SlideTransition(
+                              position: _slideAnim,
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildList(_getByStatus('pending'),
+                                      'pending', theme, isDark),
+                                  _buildList(_getByStatus('approved'),
+                                      'approved', theme, isDark),
+                                  _buildList(_getByStatus('rejected'),
+                                      'rejected', theme, isDark),
+                                ],
+                              ),
+                            ),
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────
+  // WIDGET HELPERS
+  // ─────────────────────────────────────
+
+  Widget _tabItem(String label, int count, Color dotColor) {
+    return Tab(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          if (count > 0) ...[
+            const SizedBox(width: 5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                color: dotColor.withValues(alpha: 0.25),
+              ),
+              child: Text(
+                "$count",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: dotColor,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statChip({
+    required String label,
+    required int count,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: color.withValues(alpha: isDark ? 0.1 : 0.07),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              "$count",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: color.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       ),
-
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildList(getOrdersByStatus('pending')),
-                _buildList(getOrdersByStatus('approved')),
-                _buildList(getOrdersByStatus('rejected')),
-              ],
-            ),
     );
   }
 
-  /// 🔥 LIST BUILDER
-  Widget _buildList(List data) {
+  Widget _sortChip({
+    required String label,
+    required String value,
+    required IconData icon,
+    required ThemeData theme,
+    required bool isDark,
+  }) {
+    final isSelected = _sortOrder == value;
+    return GestureDetector(
+      onTap: () => setState(() => _sortOrder = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.secondary,
+                  ],
+                )
+              : null,
+          color: isSelected
+              ? null
+              : isDark
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.grey.shade100,
+          border: Border.all(
+            color: isSelected
+                ? Colors.transparent
+                : theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary
+                        .withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 12,
+              color: isSelected
+                  ? Colors.white
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isSelected
+                    ? Colors.white
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _errorState(ThemeData theme, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.redAccent.withValues(alpha: 0.1),
+              ),
+              child: const Icon(
+                Icons.wifi_off_outlined,
+                size: 36,
+                color: Colors.redAccent,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "Gagal Memuat Data",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _errorMessage ?? "Terjadi kesalahan",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _fetch,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 28, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppConstants.radius),
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.secondary,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          theme.colorScheme.primary.withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  "Coba Lagi",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(
+      List data, String status, ThemeData theme, bool isDark) {
     if (data.isEmpty) {
-      return const Center(child: Text("Tidak ada data"));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              status == 'pending'
+                  ? Icons.hourglass_empty_outlined
+                  : status == 'approved'
+                      ? Icons.check_circle_outline
+                      : Icons.cancel_outlined,
+              size: 44,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Tidak ada order $status",
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(AppConstants.padding),
-      children: data.map((o) => _orderCard(o)).toList(),
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+      itemCount: data.length,
+      itemBuilder: (_, i) => _orderCard(data[i], theme, isDark),
     );
   }
 
-  /// 🔥 CARD
-  Widget _orderCard(Map o) {
-    final theme = Theme.of(context);
-    final status = o['status'];
+  Widget _orderCard(Map order, ThemeData theme, bool isDark) {
+    final status = order['status'] ?? 'pending';
+    final isApproved = status == 'approved';
+    final isPending = status == 'pending';
 
     return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/admin-order-detail',
-          arguments: o,
-        );
-      },
+      onTap: () => Navigator.pushNamed(
+        context,
+        '/admin-order-detail',
+        arguments: order,
+      ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 15),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(AppConstants.radius),
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    Colors.white.withValues(alpha: 0.06),
+                    Colors.white.withValues(alpha: 0.02),
+                  ]
+                : [Colors.white, Colors.grey.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : Colors.black.withValues(alpha: 0.04),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
+            // ── Baris atas: nama produk + badge
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  o['product_name'] ?? '-',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                // Icon box produk
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  ),
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
-                _statusBadge(status),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    order['product_name'] ?? '-',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _statusBadge(status, theme),
               ],
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
 
-            Text("Variant: ${o['variant_type']}"),
-            Text("Price: Rp ${o['price']}"),
+            // ── Info row: variant + harga
+            Row(
+              children: [
+                _infoChip(
+                  Icons.layers_outlined,
+                  order['variant_type'] ?? '-',
+                  theme,
+                  isDark,
+                ),
+                const SizedBox(width: 8),
+                _infoChip(
+                  Icons.payments_outlined,
+                  "Rp ${order['price'] ?? 0}",
+                  theme,
+                  isDark,
+                  isHighlight: true,
+                ),
+              ],
+            ),
 
-            const SizedBox(height: 10),
-
-            if (o['account_email'] != null)
-              Text("Email: ${o['account_email']}"),
-
-            if (o['account_password'] != null)
-              Text("Password: ${o['account_password']}"),
-
-            const SizedBox(height: 10),
-
-            if (status == 'pending')
+            // ── Tanggal order
+            if (order['created_at'] != null) ...[
+              const SizedBox(height: 8),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Colors.green),
-                    onPressed: () => approveDialog(o),
+                  Icon(
+                    Icons.access_time_outlined,
+                    size: 12,
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.35),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
-                    onPressed: () async {
-                      await _service.updateOrderStatus(o['id'], 'rejected');
-                      fetch();
-                    },
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatOrderDate(order['created_at']),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.4),
+                    ),
                   ),
                 ],
               ),
+            ],
+
+            // ── Account info (jika sudah approved)
+            if (isApproved &&
+                order['account_email'] != null) ...[
+              const SizedBox(height: 12),
+              Divider(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
+                height: 1,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.mail_outline,
+                    size: 13,
+                    color:
+                        theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    order['account_email'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            // ── Action buttons (hanya pending)
+            if (isPending) ...[
+              const SizedBox(height: 14),
+              Divider(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
+                height: 1,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Reject button
+                  GestureDetector(
+                    onTap: () => _rejectDialog(order),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radius),
+                        border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: 0.4),
+                        ),
+                        color: Colors.redAccent.withValues(alpha: 0.07),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.close,
+                              size: 14, color: Colors.redAccent),
+                          const SizedBox(width: 4),
+                          const Text(
+                            "Tolak",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Approve button
+                  GestureDetector(
+                    onTap: () => _approveDialog(order),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(AppConstants.radius),
+                        gradient: LinearGradient(
+                          colors: [
+                            Theme.of(context).colorScheme.primary,
+                            Theme.of(context).colorScheme.secondary,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.check, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            "Approve",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  /// 🔥 BADGE
-  Widget _statusBadge(String status) {
-    Color color;
+  String _formatOrderDate(String? raw) {
+    if (raw == null) return '-';
+    final date = DateTime.tryParse(raw);
+    if (date == null) return '-';
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    final h = date.hour.toString().padLeft(2, '0');
+    final m = date.minute.toString().padLeft(2, '0');
+    return "${date.day} ${months[date.month - 1]} ${date.year}, $h:$m";
+  }
+
+  Widget _statusBadge(String status, ThemeData theme) {
+    final Color color;
+    final String label;
+    final IconData icon;
 
     switch (status) {
       case 'approved':
         color = Colors.green;
+        label = "Approved";
+        icon = Icons.check_circle_outline;
         break;
       case 'rejected':
-        color = Colors.red;
+        color = Colors.redAccent;
+        label = "Rejected";
+        icon = Icons.cancel_outlined;
         break;
       default:
         color = Colors.orange;
+        label = "Pending";
+        icon = Icons.hourglass_empty_outlined;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoChip(
+    IconData icon,
+    String label,
+    ThemeData theme,
+    bool isDark, {
+    bool isHighlight = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.grey.shade100,
+        border: Border.all(
+          color: isHighlight
+              ? theme.colorScheme.primary.withValues(alpha: 0.2)
+              : theme.colorScheme.onSurface.withValues(alpha: 0.06),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 13,
+            color: isHighlight
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.45),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: isHighlight
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper untuk input di dalam dialog
+  Widget _dialogLabel(String text, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
-        status,
-        style: TextStyle(color: color),
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.4,
+          color: theme.colorScheme.primary.withValues(alpha: 0.75),
+        ),
+      ),
+    );
+  }
+
+  Widget _dialogInput(
+    String hint, {
+    required TextEditingController controller,
+    required IconData icon,
+    required ThemeData theme,
+    required bool isDark,
+    TextInputType inputType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: inputType,
+      style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          fontSize: 13,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+        ),
+        prefixIcon: Icon(
+          icon,
+          size: 18,
+          color: theme.colorScheme.primary.withValues(alpha: 0.6),
+        ),
+        filled: true,
+        fillColor: isDark
+            ? Colors.black.withValues(alpha: 0.35)
+            : Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radius),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radius),
+          borderSide: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }

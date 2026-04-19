@@ -5,20 +5,26 @@ class ClaimsService {
 
   /// 🔥 CREATE CLAIM
   Future<void> createClaim({
-    required String orderId,
-    required String userId,
-    required String description,
-    String? imageUrl,
-  }) async {
-    await supabase.from('claims').insert({
-      "order_id": orderId,
-      "user_id": userId,
-      "problem_description": description,
-      "proof_image": imageUrl,
-      "status": "pending",
-    });
-  }
+  required String orderId,
+  required String userId,
+  required String description,
+  String? imageUrl,
+}) async {
+  final parts = description.split("-");
 
+  final title = parts[0].trim();
+  final desc =
+      parts.length > 1 ? parts.sublist(1).join("-").trim() : description;
+
+  await supabase.from('claims').insert({
+    "order_id": orderId,
+    "user_id": userId,
+    "title": title,
+    "problem_description": desc,
+    "proof_image": imageUrl,
+    "status": "pending",
+  });
+}
   /// 🔥 GET USER CLAIMS
 Future<List<Map<String, dynamic>>> getUserClaims() async {
   final user = supabase.auth.currentUser;
@@ -28,11 +34,22 @@ Future<List<Map<String, dynamic>>> getUserClaims() async {
       .from('claims')
       .select('''
         id,
+        title,
         problem_description,
-        status,
-        admin_note,
         proof_image,
-        created_at
+        status,
+        created_at,
+        order_id,
+
+        orders (
+          id,
+          product_name,
+          variant_type,
+
+          products (
+            image
+          )
+        )
       ''')
       .eq('user_id', user.id)
       .order('created_at', ascending: false);
@@ -47,6 +64,7 @@ Future<List<Map<String, dynamic>>> getClaims() async {
         .from('claims')
         .select('''
           id,
+          title,
           problem_description,
           proof_image,
           status,

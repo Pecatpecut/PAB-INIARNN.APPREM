@@ -16,6 +16,10 @@ class OrderPage extends StatefulWidget {
   State<OrderPage> createState() => _OrderPageState();
 }
 
+List filteredOrders = [];
+String selectedFilter = 'all';
+String searchQuery = '';
+
 class _OrderPageState extends State<OrderPage> {
   final orderService = OrderService();
 
@@ -29,58 +33,173 @@ class _OrderPageState extends State<OrderPage> {
   }
 
   Future fetchOrders() async {
-    try {
-      final data = await orderService.getOrders();
+  try {
+    final data = await orderService.getOrders();
 
-      setState(() {
-        orders = data;
-        isLoading = false;
-      });
-    } catch (e) {
-      print("ERROR ORDER: $e");
+    setState(() {
+      orders = data;
+      filteredOrders = data;
+      isLoading = false;
+    });
+  } catch (e) {
+    print("ERROR ORDER: $e");
 
-      setState(() {
-        isLoading = false;
-      });
-    }
+    setState(() {
+      isLoading = false;
+    });
   }
+}
+
+void applyFilter() {
+  final now = DateTime.now();
+
+  List temp = orders.where((order) {
+    final status = (order['status'] ?? 'pending').toString();
+
+    final createdAt =
+        DateTime.tryParse(order['created_at'] ?? '') ?? now;
+    final duration = order['duration_days'] ?? 30;
+    final endDate = createdAt.add(Duration(days: duration));
+
+    int remaining = endDate.difference(now).inDays;
+    if (remaining < 0) remaining = 0;
+
+    final isActive = status == 'approved' && remaining > 0;
+    final isPending = status == 'pending';
+    final isExpired = status == 'approved' && remaining == 0;
+
+    /// 🔥 FILTER STATUS
+    bool matchFilter = false;
+
+    if (selectedFilter == 'all') matchFilter = true;
+    if (selectedFilter == 'active') matchFilter = isActive;
+    if (selectedFilter == 'pending') matchFilter = isPending;
+    if (selectedFilter == 'expired') matchFilter = isExpired;
+
+    /// 🔥 SEARCH (product name)
+    final name =
+        (order['product_name'] ?? '').toString().toLowerCase();
+
+    final matchSearch =
+        name.contains(searchQuery.toLowerCase());
+
+    return matchFilter && matchSearch;
+  }).toList();
+
+  setState(() {
+    filteredOrders = temp;
+  });
+}
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+          return Scaffold(
+  backgroundColor: theme.colorScheme.surface,
+  bottomNavigationBar: const CustomBottomNavbar(currentIndex: 2),
 
-      appBar: AppBar(
-        title: const Text("My Orders"),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+  body: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          theme.colorScheme.surface,
+          theme.colorScheme.primary.withValues(alpha: 0.1),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       ),
+    ),
 
-      bottomNavigationBar: const CustomBottomNavbar(currentIndex: 2),
+    child: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
 
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.surface,
-              theme.colorScheme.primary.withValues(alpha: 0.1),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.padding),
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : orders.isEmpty
-                  ? _emptyState()
-                  : _orderList(),
+            /// 🔥 NAVBAR
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.blur_on, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      "INIARNN.APPREM",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const Icon(Icons.search),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            /// 🔥 SEARCH BAR
+            Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: theme.colorScheme.surface.withValues(alpha: 0.4),
+              ),
+              child:  Row(
+                children: [
+                  Icon(Icons.search),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                    onChanged: (value) {
+                      searchQuery = value;
+                      applyFilter();
+                    },
+                    decoration: const InputDecoration(
+                      hintText: "Search orders...",
+                      border: InputBorder.none,
+                    ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+
+
+            SizedBox(height: 15),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _filterButton("All", "all"),
+                  _filterButton("Active", "active"),
+                  _filterButton("Pending", "pending"),
+                  _filterButton("Expired", "expired"),
+                ],
+              ),
+
+            const SizedBox(height: 20),
+
+            /// 🔥 CONTENT (INI PENTING)
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : orders.isEmpty
+                      ? _emptyState()
+                      : _orderList(),
+            ),
+          ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _emptyState() {
@@ -104,6 +223,33 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
+  Widget _filterButton(String label, String value) {
+  final isSelected = selectedFilter == value;
+
+  return GestureDetector(
+    onTap: () {
+      setState(() {
+        selectedFilter = value;
+      });
+      applyFilter();
+    },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: isSelected ? Colors.blue : Colors.grey.withOpacity(0.2),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.black,
+          fontSize: 12,
+        ),
+      ),
+    ),
+  );
+}
+
   Widget _orderList() {
     return ListView(
       children: [
@@ -117,14 +263,14 @@ class _OrderPageState extends State<OrderPage> {
 
         Space.h20,
 
-        ...orders.map((order) {
+        ...filteredOrders.map((order) {
           return Container(
             margin: const EdgeInsets.only(bottom: 15),
             child: Column(
               children: [
 
                 /// 🔥 CARD ORDER (ASLI)
-                OrderCard(
+                PremiumOrderCard(
                   data: order,
                   onTap: () {
                     Navigator.pushNamed(
@@ -137,20 +283,6 @@ class _OrderPageState extends State<OrderPage> {
 
                 const SizedBox(height: 8),
 
-                /// 🔥 BUTTON GARANSI
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/garansi',
-                        arguments: order, // 🔥 INI KUNCI FIX ERROR KAMU
-                      );
-                    },
-                    child: const Text("Ajukan Garansi"),
-                  ),
-                ),
               ],
             ),
           );
