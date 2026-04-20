@@ -357,13 +357,6 @@ class _AdminSettingPageState extends State<AdminSettingPage>
 
                                 const SizedBox(height: 28),
 
-                                // ─────────────────────
-                                // STORE CONFIGURATION
-                                // ─────────────────────
-                                _sectionLabel("KONFIGURASI TOKO", theme),
-                                const SizedBox(height: 12),
-                                _buildConfigCard(theme, isDark, themeProvider),
-
                                 const SizedBox(height: 28),
 
                                 // ─────────────────────
