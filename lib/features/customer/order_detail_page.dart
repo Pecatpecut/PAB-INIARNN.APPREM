@@ -487,20 +487,24 @@ String? _newPaymentProofName;
                                   theme: theme,
                                   isDark: isDark,
                                   onTap: () async {
-                                    const phone = "6285349661585";
-                                    final message =
-                                        "Halo admin, saya butuh bantuan untuk order $productName";
+                                    const phone = "6285349661585";   // tanpa tanda +
+                                    final message = "Halo admin, saya butuh bantuan untuk order $productName";
+
+                                    // Pakai scheme WhatsApp langsung (lebih stabil)
                                     final url = Uri.parse(
                                       "https://wa.me/$phone?text=${Uri.encodeComponent(message)}",
                                     );
-                                    if (await canLaunchUrl(url)) {
-                                      await launchUrl(url,
-                                          mode: LaunchMode
-                                              .externalApplication);
-                                    } else if (mounted) {
-                                      _showSnackBar(
-                                          "Tidak dapat membuka WhatsApp",
-                                          isError: true);
+
+                                    try {
+                                      // Langsung launch tanpa pengecekan canLaunchUrl dulu
+                                      await launchUrl(
+                                        url,
+                                        mode: LaunchMode.externalApplication,
+                                      );
+                                    } catch (e) {
+                                      if (mounted) {
+                                        _showSnackBar("Gagal membuka WhatsApp. Pastikan WhatsApp terinstall.", isError: true);
+                                      }
                                     }
                                   },
                                 ),
