@@ -120,7 +120,6 @@ Digunakan untuk memilih gambar dari galeri perangkat. Diimplementasikan di:
 Digunakan untuk membuka URL eksternal dari dalam aplikasi. Diimplementasikan di:
 - **Social Page** — membuka WhatsApp, Instagram, dan Twitter/X
 - **Order Detail Page** — tombol "Hubungi Support" langsung ke WhatsApp dengan pesan otomatis
-- **Rules Page** — tombol hubungi admin langsung dari halaman ketentuan
 
 ### 3. `fl_chart`
 Digunakan untuk menampilkan grafik batang (bar chart) pendapatan bulanan di **Admin Dashboard**. Fitur yang dimanfaatkan:
